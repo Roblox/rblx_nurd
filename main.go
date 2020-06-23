@@ -3,8 +3,10 @@ package main
 import (
 	// "database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	// "strconv"
 	"sync"
@@ -19,10 +21,22 @@ type JobData struct {
 	Data map[string] interface{}
 }
 
-func getJobResources(address, jobID string) map[string]interface{} {
+func getJobResources(address, jobID string, e chan error) map[string]interface{} {
 	api := "http://" + address + "/v1/job/" + jobID
-	response, _ := http.Get(api)
-	data, _ := ioutil.ReadAll(response.Body)
+	response, errHttp := http.Get(api)
+
+	// errHttp = errors.New("HTTP ERROR - getJobResources(address, jobID, e)")
+	if errHttp != nil {
+		e <- errHttp
+	}
+
+	data, errIoutil := ioutil.ReadAll(response.Body)
+
+	// errIoutil = errors.New("IOUTIL ERROR - getJobResources(address, jobID, e)")
+	if errIoutil != nil {
+		e <- errIoutil
+	}
+
 	jobJSON := string(data)
 
 	var result map[string]interface{}
@@ -37,21 +51,35 @@ func getJobResources(address, jobID string) map[string]interface{} {
 	return resources
 } 
 
-func accessJobs(v string, c chan []JobData) {
-	defer wg.Done()
+func accessJobs(v string, c chan []JobData, e chan error) {
 	api := "http://" + v + "/v1/jobs" 
-	response, _ := http.Get(api)
-	data, _ := ioutil.ReadAll(response.Body)
+	response, errHttp := http.Get(api)
+
+	// errHttp = errors.New("HTTP ERROR - accessJobs(v, c, e)")
+	if errHttp != nil {
+		e <- errHttp
+	}
+	
+	data, errIoutil := ioutil.ReadAll(response.Body)
+	
+	// errIoutil = errors.New("IOUTIL ERROR - accessJobs(v, c, e)")
+	if errIoutil != nil {
+		e <- errIoutil
+	}
+	
 	sliceOfJsons := string(data)
 	keysBody := []byte(sliceOfJsons)
 	keys := make([]interface{}, 0)
 	json.Unmarshal(keysBody, &keys)
+
 	var jobDataSlice []JobData
-		for i := range keys {
-			jobID := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"] // unpack JobID from JSON
-			jobDataSlice = append(jobDataSlice, JobData{jobID.(string), getJobResources(v, jobID.(string))})
-		}
+
+	for i := range keys {
+		jobID := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"] // unpack JobID from JSON
+		jobDataSlice = append(jobDataSlice, JobData{jobID.(string), getJobResources(v, jobID.(string), e)})
+	}
 	c <- jobDataSlice
+	wg.Done()
 }
 
 func main() {
@@ -60,15 +88,31 @@ func main() {
 	// addresses := []string{}
 	buffer := len(addresses)
 	c := make(chan []JobData, buffer)
+	e := make(chan error)
 	m := make(map[string]JobData)
+
+	go func(e chan error) {
+		err := <-e
+		// close(e)
+		log.Fatal("Error: ", err)	
+	}(e)
 	
 	for _, v := range addresses {
 		wg.Add(1)
-		go accessJobs(v, c)
+		go accessJobs(v, c, e)
 	}
 
 	wg.Wait()
 	close(c)
+
+	// select {
+	// 	case <-c:
+	// 		break
+	// 	case err := <-e:
+	// 		close(e)
+	// 		fmt.Println("Error: ", err)
+	// 		log.Fatal("Error: ", err)
+	// }
 	
 	for jobDataSlice := range c {
 		for _, v := range jobDataSlice {
