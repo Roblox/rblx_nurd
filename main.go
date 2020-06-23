@@ -50,6 +50,7 @@ func aggResources(address, jobID string, e chan error) (float64, float64, float6
 	for _, taskGroup := range taskGroups {
 		count := taskGroup.(map[string]interface{})["Count"].(float64)
 		tasks := taskGroup.(map[string]interface{})["Tasks"].([]interface{})
+
 		for _, task := range tasks {
 			resources := task.(map[string]interface{})["Resources"].(map[string]interface{})
 			CPUTotal += count * resources["CPU"].(float64)
@@ -80,6 +81,7 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 	sliceOfJsons := string(data)
 	keysBody := []byte(sliceOfJsons)
 	keys := make([]interface{}, 0)
+
 	json.Unmarshal(keysBody, &keys)
 
 	var jobDataSlice []JobData
@@ -89,7 +91,9 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggResources(address, jobID.(string), e)
 		jobDataSlice = append(jobDataSlice, JobData{jobID.(string), CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal})
 	}
+
 	c <- jobDataSlice
+
 	wg.Done()
 }
 
@@ -106,7 +110,6 @@ func main() {
 		log.Fatal("Error: ", err)	
 	}(e)
 	
-	start := time.Now()
 	for _, address := range addresses {
 		wg.Add(1)
 		go reachCluster(address, c, e)
@@ -114,7 +117,6 @@ func main() {
 
 	wg.Wait()
 	close(c)
-	end := time.Now()
 	
 	for jobDataSlice := range c {
 		for _, v := range jobDataSlice {
@@ -132,5 +134,4 @@ func main() {
 	}
 
 	fmt.Println("Complete.")
-	fmt.Println("Elapsed:", end.Sub(start))
 }
