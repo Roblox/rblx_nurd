@@ -60,7 +60,7 @@ func aggResources(address, jobID string, e chan error) (float64, float64, float6
 		}
 	}
 	return CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal
-}
+} 
 
 func reachCluster(address string, c chan []JobData, e chan error) {
 	api := "http://" + address + "/v1/jobs" 
