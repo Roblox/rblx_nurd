@@ -16,6 +16,8 @@ import (
 
 var wg sync.WaitGroup
 
+// JobData holds usage and requested
+// resource data for a a job
 type JobData struct { 
 	JobID string
 	ticksUsed float64
@@ -24,19 +26,18 @@ type JobData struct {
 	memoryMBRequested float64
 	diskMB float64
 	IOPS float64
+	namespace string
+	dataCenters []interface{}
 }
 
 func aggUsageResources(address, jobID string) (float64, float64) {
 	var totalTicksUsageTotal, rssUsageTotal float64
-
 	jobsAPI := "http://" + address + "/v1/job/" + jobID + "/allocations"
 	response, _ := http.Get(jobsAPI)
 	data, _ := ioutil.ReadAll(response.Body)
 	sliceOfAllocs := []byte(string(data))
-
 	keys := make([]interface{}, 0)
 	json.Unmarshal(sliceOfAllocs, &keys)
-
 	// prints out alloc ids for a specified job
 	for i := range keys {
 		// fmt.Println("allocID")
@@ -47,33 +48,22 @@ func aggUsageResources(address, jobID string) (float64, float64) {
 			clientAllocAPI := "http://" + address + "/v1/client/allocation/" + allocID + "/stats"
 			allocResponse, _ := http.Get(clientAllocAPI)
 			allocData, _ := ioutil.ReadAll(allocResponse.Body)
-	
 			var allocStats map[string]interface{}
 			json.Unmarshal([]byte(string(allocData)), &allocStats)
 
 			if allocStats["ResourceUsage"] != nil {
-				// fmt.Println("ResourceUsage", jobID)
-				// fmt.Println(allocStats["ResourceUsage"])
 				resourceUsage := allocStats["ResourceUsage"].(map[string]interface{})
-				// fmt.Println("MemoryStats")
 				memoryStats := resourceUsage["MemoryStats"].(map[string]interface{})
-				// fmt.Println("CpuStats")
 				cpuStats := resourceUsage["CpuStats"].(map[string]interface{})
-		
 				rss := memoryStats["RSS"]
-
 				totalTicks := cpuStats["TotalTicks"]
-		
 				rssUsageTotal += rss.(float64)
 				totalTicksUsageTotal += totalTicks.(float64)
 			}
 		}
 	}
 
-	// fmt.Println("Total RSS Usage:", rssUsageTotal)
-	// fmt.Println("Total Ticks Usage:", totalTicksUsageTotal)
 	return totalTicksUsageTotal, rssUsageTotal / 1e6
-
 }
  
 func aggReqResources(address, jobID string, e chan error) (float64, float64, float64, float64) {
@@ -117,14 +107,12 @@ func aggReqResources(address, jobID string, e chan error) (float64, float64, flo
 func reachCluster(address string, c chan []JobData, e chan error) {
 	api := "http://" + address + "/v1/jobs" 
 	response, errHttp := http.Get(api)
-
 	// errHttp = errors.New("HTTP ERROR - reachCluster(address, c, e)")
 	if errHttp != nil {
 		e <- errHttp
 	}
 	
 	data, errIoutil := ioutil.ReadAll(response.Body)
-	
 	// errIoutil = errors.New("IOUTIL ERROR - reachCluster(address, c, e)")
 	if errIoutil != nil {
 		e <- errIoutil
@@ -133,18 +121,25 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 	sliceOfJsons := string(data)
 	keysBody := []byte(sliceOfJsons)
 	keys := make([]interface{}, 0)
-
 	json.Unmarshal(keysBody, &keys)
-
 	var jobDataSlice []JobData
 
 	for i := range keys {
 		jobID := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"].(string) // unpack JobID from JSON
-		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(address, jobID, e)
 		ticksUsage, rssUsage := aggUsageResources(address, jobID)
-
-		jobData := JobData{jobID, ticksUsage, CPUTotal, rssUsage, memoryMBTotal, diskMBTotal, IOPSTotal}
-
+		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(address, jobID, e)
+		namespace := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["Namespace"].(string)
+		dataCenters := keys[i].(map[string]interface{})["Datacenters"].([]interface{})
+		jobData := JobData{
+						jobID, 
+						ticksUsage, 
+						CPUTotal, 
+						rssUsage, 
+						memoryMBTotal, 
+						diskMBTotal, 
+						IOPSTotal,
+						namespace,
+						dataCenters}
 		jobDataSlice = append(jobDataSlice, jobData)
 	}
 
@@ -154,7 +149,6 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 }
 
 func main() {
-	// will be provided 1 address/cluster
 	addresses := []string{"***REMOVED***:***REMOVED***", "***REMOVED***:***REMOVED***"} // substitute for config file, server address
 	buffer := len(addresses)
 	c := make(chan []JobData, buffer)
