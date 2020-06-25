@@ -10,37 +10,48 @@ import (
 	"net/http"
 	// "strconv"
 	"sync"
-	// "time"
+	"time"
 	// _ "github.com/mattn/go-sqlite3"
 )
 
 var wg sync.WaitGroup
 
-// JobData holds usage and requested
-// resource data for a a job
+// JobData holds namespace, DC,
+// resource data for a job
 type JobData struct { 
 	JobID string
-	ticksUsed float64
-	CPURequested float64
-	RSSUsed float64
-	memoryMBRequested float64
-	diskMB float64
-	IOPS float64
+	uTicks float64
+	rCPU float64
+	uRSS float64
+	rMemoryMB float64
+	rdiskMB float64
+	rIOPS float64
 	namespace string
 	dataCenters []interface{}
 }
 
-func aggUsageResources(address, jobID string) (float64, float64) {
-	var totalTicksUsageTotal, rssUsageTotal float64
-	jobsAPI := "http://" + address + "/v1/job/" + jobID + "/allocations"
-	response, _ := http.Get(jobsAPI)
-	data, _ := ioutil.ReadAll(response.Body)
+// Aggregate total CPU, memory usage for a job
+func aggUsageResources(address, jobID string, e chan error) (float64, float64) {
+	var ticksTotal, rssTotal float64
+
+	api := "http://" + address + "/v1/job/" + jobID + "/allocations"
+	response, errHttp := http.Get(api)
+	// errHttp = errors.New("HTTP ERROR - aggUsageResources(address, jobID, e)")
+	if errHttp != nil {
+		e <- errHttp
+	}
+
+	data, errIoutil := ioutil.ReadAll(response.Body)
+	// errIoutil = errors.New("IOUTIL ERROR - aggUsageResources(address, jobID, e)")
+	if errIoutil != nil {
+		e <- errIoutil
+	}
+
 	sliceOfAllocs := []byte(string(data))
 	keys := make([]interface{}, 0)
 	json.Unmarshal(sliceOfAllocs, &keys)
-	// prints out alloc ids for a specified job
+
 	for i := range keys {
-		// fmt.Println("allocID")
 		allocID := keys[i].(map[string]interface{})["ID"].(string)
 		clientStatus := keys[i].(map[string]interface{})["ClientStatus"].(string)
 
@@ -56,30 +67,29 @@ func aggUsageResources(address, jobID string) (float64, float64) {
 				memoryStats := resourceUsage["MemoryStats"].(map[string]interface{})
 				cpuStats := resourceUsage["CpuStats"].(map[string]interface{})
 				rss := memoryStats["RSS"]
-				totalTicks := cpuStats["TotalTicks"]
-				rssUsageTotal += rss.(float64)
-				totalTicksUsageTotal += totalTicks.(float64)
+				ticks := cpuStats["TotalTicks"]
+				rssTotal += rss.(float64) / 1e6
+				ticksTotal += ticks.(float64)
 			}
 		}
 	}
 
-	return totalTicksUsageTotal, rssUsageTotal / 1e6
+	return ticksTotal, rssTotal 
 }
- 
+
+// Aggregate resources requested by a job
 func aggReqResources(address, jobID string, e chan error) (float64, float64, float64, float64) {
 	var CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal float64
 
 	api := "http://" + address + "/v1/job/" + jobID
 	response, errHttp := http.Get(api)
-
-	// errHttp = errors.New("HTTP ERROR - aggResources(address, jobID, e)")
+	// errHttp = errors.New("HTTP ERROR - aggReqResources(address, jobID, e)")
 	if errHttp != nil {
 		e <- errHttp
 	}
 
 	data, errIoutil := ioutil.ReadAll(response.Body)
-	
-	// errIoutil = errors.New("IOUTIL ERROR - aggResources(address, jobID, e)")
+	// errIoutil = errors.New("IOUTIL ERROR - aggReqResources(address, jobID, e)")
 	if errIoutil != nil {
 		e <- errIoutil
 	}
@@ -126,7 +136,7 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 
 	for i := range keys {
 		jobID := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"].(string) // unpack JobID from JSON
-		ticksUsage, rssUsage := aggUsageResources(address, jobID)
+		ticksUsage, rssUsage := aggUsageResources(address, jobID, e)
 		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(address, jobID, e)
 		namespace := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["Namespace"].(string)
 		dataCenters := keys[i].(map[string]interface{})["Datacenters"].([]interface{})
@@ -151,37 +161,48 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 func main() {
 	addresses := []string{"***REMOVED***:***REMOVED***", "***REMOVED***:***REMOVED***"} // substitute for config file, server address
 	buffer := len(addresses)
-	c := make(chan []JobData, buffer)
-	e := make(chan error)
-	m := make(map[string]JobData)
+	duration, _ := time.ParseDuration("1m")
 
-	go func(e chan error) {
-		err := <-e
-		log.Fatal("Error: ", err)	
-	}(e)
+	for {
+		c := make(chan []JobData, buffer)
+		e := make(chan error)
+		m := make(map[string]JobData)
 	
-	for _, address := range addresses {
-		wg.Add(1)
-		go reachCluster(address, c, e)
-	}
-
-	wg.Wait()
-	close(c)
+		begin := time.Now()
 	
-	for jobDataSlice := range c {
-		for _, v := range jobDataSlice {
-			m[v.JobID] = v
+		// Listen for errors
+		go func(e chan error) {
+			err := <-e
+			log.Fatal("Error: ", err)	
+		}(e)
+		
+		for _, address := range addresses {
+			wg.Add(1)
+			go reachCluster(address, c, e)
 		}
+	
+		wg.Wait()
+		close(c)
+	
+		end := time.Now()
+		
+		for jobDataSlice := range c {
+			for _, v := range jobDataSlice {
+				m[v.JobID] = v
+			}
+		}
+	
+		// may not have to use hash table for aggregation, duplicate filter
+		// since aggregation is done in aggResources()
+		// and duplicates should be filtered out by separate cluster addresses
+		i := 0
+		for _, val := range m {
+			fmt.Println(i, ":", val)
+			i += 1
+		}
+	
+		fmt.Println("Complete.")
+		fmt.Println("Elapsed:", end.Sub(begin))
+		time.Sleep(duration)
 	}
-
-	// may not have to use hash table for aggregation, duplicate filter
-	// since aggregation is done in aggResources()
-	// and duplicates should be filtered out by separate cluster addresses
-	i := 0
-	for _, val := range m {
-		fmt.Println(i, ":", val)
-		i += 1
-	}
-
-	fmt.Println("Complete.")
 }
