@@ -24,7 +24,7 @@ type JobData struct {
 	IOPS float64
 }
  
-func aggResources(address, jobID string, e chan error) (float64, float64, float64, float64) {
+func aggReqResources(address, jobID string, e chan error) (float64, float64, float64, float64) {
 	var CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal float64
 
 	api := "http://" + address + "/v1/job/" + jobID
@@ -88,7 +88,7 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 
 	for i := range keys {
 		jobID := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"] // unpack JobID from JSON
-		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggResources(address, jobID.(string), e)
+		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(address, jobID.(string), e)
 		jobDataSlice = append(jobDataSlice, JobData{jobID.(string), CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal})
 	}
 
