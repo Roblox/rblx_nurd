@@ -18,10 +18,62 @@ var wg sync.WaitGroup
 
 type JobData struct { 
 	JobID string
-	CPU float64
-	memoryMB float64
+	ticksUsed float64
+	CPURequested float64
+	RSSUsed float64
+	memoryMBRequested float64
 	diskMB float64
 	IOPS float64
+}
+
+func aggUsageResources(address, jobID string) (float64, float64) {
+	var totalTicksUsageTotal, rssUsageTotal float64
+
+	jobsAPI := "http://" + address + "/v1/job/" + jobID + "/allocations"
+	response, _ := http.Get(jobsAPI)
+	data, _ := ioutil.ReadAll(response.Body)
+	sliceOfAllocs := []byte(string(data))
+
+	keys := make([]interface{}, 0)
+	json.Unmarshal(sliceOfAllocs, &keys)
+
+	// prints out alloc ids for a specified job
+	for i := range keys {
+		// fmt.Println("allocID")
+		allocID := keys[i].(map[string]interface{})["ID"].(string)
+		clientStatus := keys[i].(map[string]interface{})["ClientStatus"].(string)
+
+		if clientStatus != "lost" {
+			clientAllocAPI := "http://" + address + "/v1/client/allocation/" + allocID + "/stats"
+			allocResponse, _ := http.Get(clientAllocAPI)
+			allocData, _ := ioutil.ReadAll(allocResponse.Body)
+	
+			var allocStats map[string]interface{}
+			json.Unmarshal([]byte(string(allocData)), &allocStats)
+
+			if allocStats["ResourceUsage"] != nil {
+				// fmt.Println("ResourceUsage", jobID)
+				// fmt.Println(allocStats["ResourceUsage"])
+				resourceUsage := allocStats["ResourceUsage"].(map[string]interface{})
+				// fmt.Println("MemoryStats")
+				memoryStats := resourceUsage["MemoryStats"].(map[string]interface{})
+				// fmt.Println("CpuStats")
+				cpuStats := resourceUsage["CpuStats"].(map[string]interface{})
+		
+				rss := memoryStats["RSS"]
+
+				totalTicks := cpuStats["TotalTicks"]
+		
+				rssUsageTotal += rss.(float64)
+				totalTicksUsageTotal += totalTicks.(float64)
+			}
+		}
+	}
+
+	// fmt.Println("Total RSS Usage:", rssUsageTotal)
+	// fmt.Println("Total Ticks Usage:", totalTicksUsageTotal)
+	return totalTicksUsageTotal, rssUsageTotal / 1e6
+
 }
  
 func aggReqResources(address, jobID string, e chan error) (float64, float64, float64, float64) {
@@ -87,9 +139,13 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 	var jobDataSlice []JobData
 
 	for i := range keys {
-		jobID := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"] // unpack JobID from JSON
-		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(address, jobID.(string), e)
-		jobDataSlice = append(jobDataSlice, JobData{jobID.(string), CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal})
+		jobID := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"].(string) // unpack JobID from JSON
+		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(address, jobID, e)
+		ticksUsage, rssUsage := aggUsageResources(address, jobID)
+
+		jobData := JobData{jobID, ticksUsage, CPUTotal, rssUsage, memoryMBTotal, diskMBTotal, IOPSTotal}
+
+		jobDataSlice = append(jobDataSlice, jobData)
 	}
 
 	c <- jobDataSlice
