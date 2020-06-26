@@ -30,6 +30,7 @@ type JobData struct {
 	rIOPS float64
 	namespace string
 	dataCenters string
+	currentTime string
 }
 
 // Aggregate total CPU, memory usage for a job
@@ -149,6 +150,7 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 				dataCenters += " "
 			}
 		}
+		currentTime := time.Now().Format("2006-01-02 15:04:05")
 		jobData := JobData{
 						jobID, 
 						ticksUsage, 
@@ -158,7 +160,8 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 						diskMBTotal, 
 						IOPSTotal,
 						namespace,
-						dataCenters}
+						dataCenters,
+						currentTime}
 		jobDataSlice = append(jobDataSlice, jobData)
 	}
 
@@ -184,7 +187,8 @@ func main() {
 		rdiskMB REAL,
 		rIOPS REAL,
 		namespace TEXT,
-		dataCenters TEXT)`)
+		dataCenters TEXT,
+		date DATETIME)`)
 	createTable.Exec()
 
 	for {
@@ -229,7 +233,8 @@ func main() {
 			rdiskMB,
 			rIOPS,
 			namespace,
-			dataCenters) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+			dataCenters,
+			date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 
 		if errPrepare != nil {
 			log.Fatal("Error:", errPrepare)
@@ -245,8 +250,8 @@ func main() {
 						val.rdiskMB,
 						val.rIOPS,
 						val.namespace,
-						val.dataCenters)
-						// include time
+						val.dataCenters,
+						val.currentTime)
 
 						// fmt.Println(i, ":", val)
 						// i += 1
@@ -254,18 +259,16 @@ func main() {
 
 		rows, _ := db.Query("SELECT * FROM resources")
 
-		var JobID, namespace, dataCenters string
+		var JobID, namespace, dataCenters, currentTime string
 		var uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS float64
 		var id int
 
 		for rows.Next() {
 			// rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace)
 			// fmt.Println(strconv.Itoa(id) + ":", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace)
-			rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters)
-			fmt.Println(strconv.Itoa(id) + ": ", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace, dataCenters)
+			rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
+			fmt.Println(strconv.Itoa(id) + ": ", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace, dataCenters, currentTime)
 		}
-					
-		fmt.Println("Complete.")
 		fmt.Println("Elapsed:", end.Sub(begin))
 		time.Sleep(duration)
 	}
