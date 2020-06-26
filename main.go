@@ -241,11 +241,25 @@ func initDB() (*sql.DB, *sql.Stmt) {
 	return db, insert
 }
 
+func printRowsDB(db *sql.DB) {
+	rows, _ := db.Query("SELECT * FROM resources")
+
+	var JobID, namespace, dataCenters, currentTime string
+	var uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS float64
+	var id int
+
+	for rows.Next() {
+		rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
+		fmt.Println(strconv.Itoa(id) + ": ", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace, dataCenters, currentTime)
+	}
+}
+
 func main() {
 	addresses, buffer, duration := config()
 
 	db, insert := initDB()
 	
+	// While loop for scrape frequency
 	for {
 		c := make(chan []JobData, buffer)
 		e := make(chan error)
@@ -259,6 +273,7 @@ func main() {
 			log.Fatal("Error: ", err)	
 		}(e)
 		
+		// Goroutines for each cluster address
 		for _, address := range addresses {
 			wg.Add(1)
 			go reachCluster(address, c, e)
@@ -293,17 +308,19 @@ func main() {
 						val.dataCenters,
 						val.currentTime)
 		}
+
+		printRowsDB(db)
 		
-		rows, _ := db.Query("SELECT * FROM resources")
+		// rows, _ := db.Query("SELECT * FROM resources")
 
-		var JobID, namespace, dataCenters, currentTime string
-		var uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS float64
-		var id int
+		// var JobID, namespace, dataCenters, currentTime string
+		// var uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS float64
+		// var id int
 
-		for rows.Next() {
-			rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
-			fmt.Println(strconv.Itoa(id) + ": ", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace, dataCenters, currentTime)
-		}
+		// for rows.Next() {
+		// 	rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
+		// 	fmt.Println(strconv.Itoa(id) + ": ", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace, dataCenters, currentTime)
+		// }
 		fmt.Println("Elapsed:", end.Sub(begin))
 		time.Sleep(duration)
 	}
