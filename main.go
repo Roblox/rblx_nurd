@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	// "strings"
 	"sync"
 	"time"
 	
@@ -28,7 +29,7 @@ type JobData struct {
 	rdiskMB float64
 	rIOPS float64
 	namespace string
-	dataCenters []interface{}
+	dataCenters string
 }
 
 // Aggregate total CPU, memory usage for a job
@@ -140,7 +141,14 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 		ticksUsage, rssUsage := aggUsageResources(address, jobID, e)
 		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(address, jobID, e)
 		namespace := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["Namespace"].(string)
-		dataCenters := keys[i].(map[string]interface{})["Datacenters"].([]interface{})
+		dataCentersSlice := keys[i].(map[string]interface{})["Datacenters"].([]interface{})
+		var dataCenters string
+		for i, v := range dataCentersSlice {
+			dataCenters += v.(string)
+			if i != len(dataCentersSlice) - 1 {
+				dataCenters += " "
+			}
+		}
 		jobData := JobData{
 						jobID, 
 						ticksUsage, 
@@ -169,14 +177,14 @@ func main() {
 	db, _ := sql.Open("sqlite3", "resources.db")
 	createTable, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS resources (id INTEGER PRIMARY KEY,
 		JobID TEXT,
-		uTicks REAL)`) //, 
-		// rCPU REAL,
-		// uRSS REAL,
-		// rMemoryMB REAL,
-		// rdiskMB REAL,
-		// rIOPS REAL,
-		// namespace TEXT,
-		// dataCenters TEXT)`)
+		uTicks REAL,
+		rCPU REAL, 
+		uRSS REAL,
+		rMemoryMB REAL,
+		rdiskMB REAL,
+		rIOPS REAL,
+		namespace TEXT,
+		dataCenters TEXT)`)
 	createTable.Exec()
 
 	for {
@@ -214,17 +222,14 @@ func main() {
 		// and duplicates should be filtered out by separate cluster addresses
 		// i := 0
 		insert, errPrepare := db.Prepare(`INSERT INTO resources (JobID,
-			uTicks) VALUES (?, ?)`)
-			// ,
-			// rCPU,
-			// uRSS,
-			// rMemoryMB,
-			// rdiskMB,
-			// rIOPS,
-			// namespace)
-			// VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-
-		// insert, errPrepare := db.Prepare("INSERT INTO resources (JobID, uTicks) VALUES (?, ?)")
+			uTicks, 
+			rCPU,
+			uRSS,
+			rMemoryMB,
+			rdiskMB,
+			rIOPS,
+			namespace,
+			dataCenters) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 
 		if errPrepare != nil {
 			log.Fatal("Error:", errPrepare)
@@ -233,13 +238,14 @@ func main() {
 		for _, val := range m {
 			// fmt.Println(val.uTicks)
 			insert.Exec(val.JobID,
-						val.uTicks) //, 
-						// val.rCPU, 
-						// val.uRSS,
-						// val.rMemoryMB,
-						// val.rdiskMB,
-						// val.rIOPS,
-						// val.namespace)
+						val.uTicks,
+						val.rCPU,
+						val.uRSS,
+						val.rMemoryMB,
+						val.rdiskMB,
+						val.rIOPS,
+						val.namespace,
+						val.dataCenters)
 						// include time
 
 						// fmt.Println(i, ":", val)
@@ -248,15 +254,15 @@ func main() {
 
 		rows, _ := db.Query("SELECT * FROM resources")
 
-		var JobID string //, namespace string
-		var uTicks float64 //, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS float64
+		var JobID, namespace, dataCenters string
+		var uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS float64
 		var id int
 
 		for rows.Next() {
 			// rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace)
 			// fmt.Println(strconv.Itoa(id) + ":", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace)
-			rows.Scan(&id, &JobID, &uTicks)
-			fmt.Println(strconv.Itoa(id) + ": ", JobID, uTicks)
+			rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters)
+			fmt.Println(strconv.Itoa(id) + ": ", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace, dataCenters)
 		}
 					
 		fmt.Println("Complete.")
