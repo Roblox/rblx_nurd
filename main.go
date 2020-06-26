@@ -35,7 +35,7 @@ type JobData struct {
 
 // Aggregate total CPU, memory usage for a job
 func aggUsageResources(address, jobID string, e chan error) (float64, float64) {
-	var ticksTotal, rssTotal float64
+	var ticksTotal, rssTotal, cacheTotal, swapTotal, usageTotal, maxUsageTotal, kernelUsageTotal, kernelMaxUsageTotal float64
 
 	api := "http://" + address + "/v1/job/" + jobID + "/allocations"
 	response, errHttp := http.Get(api)
@@ -70,8 +70,21 @@ func aggUsageResources(address, jobID string, e chan error) (float64, float64) {
 				memoryStats := resourceUsage["MemoryStats"].(map[string]interface{})
 				cpuStats := resourceUsage["CpuStats"].(map[string]interface{})
 				rss := memoryStats["RSS"]
+				cache := memoryStats["Cache"]
+				swap := memoryStats["Swap"]
+				usage := memoryStats["Usage"]
+				maxUsage := memoryStats["MaxUsage"]
+				kernelUsage := memoryStats["KernelUsage"]
+				kernelMaxUsage := memoryStats["KernelMaxUsage"]
 				ticks := cpuStats["TotalTicks"]
+
 				rssTotal += rss.(float64) / 1e6
+				cacheTotal += cache.(float64) / 1e6
+				swapTotal += swap.(float64) / 1e6
+				usageTotal += usage.(float64) / 1e6
+				maxUsageTotal += maxUsage.(float64) / 1e6
+				kernelUsageTotal += kernelUsage.(float64) / 1e6
+				kernelMaxUsageTotal += kernelMaxUsage.(float64) / 1e6
 				ticksTotal += ticks.(float64)
 			}
 		}
@@ -117,6 +130,7 @@ func aggReqResources(address, jobID string, e chan error) (float64, float64, flo
 	return CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal
 } 
 
+// Access a single cluster
 func reachCluster(address string, c chan []JobData, e chan error) {
 	api := "http://" + address + "/v1/jobs" 
 	response, errHttp := http.Get(api)
@@ -170,15 +184,29 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 	wg.Done()
 }
 
-func main() {
-	// substitute for config file, server address
+// Configure the cluster addresses and frequency of monitor
+func config() ([]string, int, time.Duration) {
 	addresses := []string{"***REMOVED***:***REMOVED***", "***REMOVED***:***REMOVED***"}
 	buffer := len(addresses)
-	duration, _ := time.ParseDuration("1m")
+	duration, errParseDuration := time.ParseDuration("1m")
 
-	// configure database
-	db, _ := sql.Open("sqlite3", "resources.db")
-	createTable, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS resources (id INTEGER PRIMARY KEY,
+	if errParseDuration != nil {
+		log.Fatal("Error:", errParseDuration)
+	}
+	
+	return addresses, buffer, duration
+}
+
+// Initialize database
+// Configure insert SQL statement
+func initDB() (*sql.DB, *sql.Stmt) {
+	db, errOpen := sql.Open("sqlite3", "resources.db")
+
+	if errOpen != nil {
+		log.Fatal("Error:", errOpen)
+	}
+
+	createTable, errCreateTable := db.Prepare(`CREATE TABLE IF NOT EXISTS resources (id INTEGER PRIMARY KEY,
 		JobID TEXT,
 		uTicks REAL,
 		rCPU REAL, 
@@ -191,6 +219,33 @@ func main() {
 		date DATETIME)`)
 	createTable.Exec()
 
+	if errCreateTable != nil {
+		log.Fatal("Error:", errCreateTable)
+	}
+
+	insert, errInsert := db.Prepare(`INSERT INTO resources (JobID,
+		uTicks, 
+		rCPU,
+		uRSS,
+		rMemoryMB,
+		rdiskMB,
+		rIOPS,
+		namespace,
+		dataCenters,
+		date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+
+	if errInsert != nil {
+		log.Fatal("Error:", errInsert)
+	}
+
+	return db, insert
+}
+
+func main() {
+	addresses, buffer, duration := config()
+
+	db, insert := initDB()
+	
 	for {
 		c := make(chan []JobData, buffer)
 		e := make(chan error)
@@ -225,23 +280,8 @@ func main() {
 		// since aggregation is done in aggResources()
 		// and duplicates should be filtered out by separate cluster addresses
 		// i := 0
-		insert, errPrepare := db.Prepare(`INSERT INTO resources (JobID,
-			uTicks, 
-			rCPU,
-			uRSS,
-			rMemoryMB,
-			rdiskMB,
-			rIOPS,
-			namespace,
-			dataCenters,
-			date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-
-		if errPrepare != nil {
-			log.Fatal("Error:", errPrepare)
-		}
 
 		for _, val := range m {
-			// fmt.Println(val.uTicks)
 			insert.Exec(val.JobID,
 						val.uTicks,
 						val.rCPU,
@@ -252,11 +292,8 @@ func main() {
 						val.namespace,
 						val.dataCenters,
 						val.currentTime)
-
-						// fmt.Println(i, ":", val)
-						// i += 1
 		}
-
+		
 		rows, _ := db.Query("SELECT * FROM resources")
 
 		var JobID, namespace, dataCenters, currentTime string
@@ -264,8 +301,6 @@ func main() {
 		var id int
 
 		for rows.Next() {
-			// rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace)
-			// fmt.Println(strconv.Itoa(id) + ":", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace)
 			rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
 			fmt.Println(strconv.Itoa(id) + ": ", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace, dataCenters, currentTime)
 		}
