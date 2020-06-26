@@ -1,17 +1,18 @@
 package main
 
 import (
-	// "database/sql"
+	"database/sql"
 	"encoding/json"
 	// "errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	// "strconv"
+	"strconv"
 	"sync"
 	"time"
-	// _ "github.com/mattn/go-sqlite3"
+	
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var wg sync.WaitGroup
@@ -159,9 +160,24 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 }
 
 func main() {
-	addresses := []string{"***REMOVED***:***REMOVED***", "***REMOVED***:***REMOVED***"} // substitute for config file, server address
+	// substitute for config file, server address
+	addresses := []string{"***REMOVED***:***REMOVED***", "***REMOVED***:***REMOVED***"}
 	buffer := len(addresses)
 	duration, _ := time.ParseDuration("1m")
+
+	// configure database
+	db, _ := sql.Open("sqlite3", "resources.db")
+	createTable, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS resources (id INTEGER PRIMARY KEY,
+		JobID TEXT,
+		uTicks REAL)`) //, 
+		// rCPU REAL,
+		// uRSS REAL,
+		// rMemoryMB REAL,
+		// rdiskMB REAL,
+		// rIOPS REAL,
+		// namespace TEXT,
+		// dataCenters TEXT)`)
+	createTable.Exec()
 
 	for {
 		c := make(chan []JobData, buffer)
@@ -186,6 +202,7 @@ func main() {
 	
 		end := time.Now()
 		
+		// channel to hash map
 		for jobDataSlice := range c {
 			for _, v := range jobDataSlice {
 				m[v.JobID] = v
@@ -195,12 +212,53 @@ func main() {
 		// may not have to use hash table for aggregation, duplicate filter
 		// since aggregation is done in aggResources()
 		// and duplicates should be filtered out by separate cluster addresses
-		i := 0
-		for _, val := range m {
-			fmt.Println(i, ":", val)
-			i += 1
+		// i := 0
+		insert, errPrepare := db.Prepare(`INSERT INTO resources (JobID,
+			uTicks) VALUES (?, ?)`)
+			// ,
+			// rCPU,
+			// uRSS,
+			// rMemoryMB,
+			// rdiskMB,
+			// rIOPS,
+			// namespace)
+			// VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+
+		// insert, errPrepare := db.Prepare("INSERT INTO resources (JobID, uTicks) VALUES (?, ?)")
+
+		if errPrepare != nil {
+			log.Fatal("Error:", errPrepare)
 		}
-	
+
+		for _, val := range m {
+			// fmt.Println(val.uTicks)
+			insert.Exec(val.JobID,
+						val.uTicks) //, 
+						// val.rCPU, 
+						// val.uRSS,
+						// val.rMemoryMB,
+						// val.rdiskMB,
+						// val.rIOPS,
+						// val.namespace)
+						// include time
+
+						// fmt.Println(i, ":", val)
+						// i += 1
+		}
+
+		rows, _ := db.Query("SELECT * FROM resources")
+
+		var JobID string //, namespace string
+		var uTicks float64 //, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS float64
+		var id int
+
+		for rows.Next() {
+			// rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace)
+			// fmt.Println(strconv.Itoa(id) + ":", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace)
+			rows.Scan(&id, &JobID, &uTicks)
+			fmt.Println(strconv.Itoa(id) + ": ", JobID, uTicks)
+		}
+					
 		fmt.Println("Complete.")
 		fmt.Println("Elapsed:", end.Sub(begin))
 		time.Sleep(duration)
