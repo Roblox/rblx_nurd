@@ -186,7 +186,7 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 
 // Configure the cluster addresses and frequency of monitor
 func config() ([]string, int, time.Duration) {
-	addresses := []string{"***REMOVED***:***REMOVED***", "***REMOVED***:***REMOVED***"}
+	addresses := []string{"***REMOVED***:***REMOVED***"} // one address per cluster
 	buffer := len(addresses)
 	duration, errParseDuration := time.ParseDuration("1m")
 
@@ -263,7 +263,7 @@ func main() {
 	for {
 		c := make(chan []JobData, buffer)
 		e := make(chan error)
-		m := make(map[string]JobData)
+		// m := make(map[string]JobData)
 	
 		begin := time.Now()
 	
@@ -284,43 +284,24 @@ func main() {
 	
 		end := time.Now()
 		
-		// channel to hash map
+		// Insert into db from channel
 		for jobDataSlice := range c {
 			for _, v := range jobDataSlice {
-				m[v.JobID] = v
+				insert.Exec(v.JobID,
+					v.uTicks,
+					v.rCPU,
+					v.uRSS,
+					v.rMemoryMB,
+					v.rdiskMB,
+					v.rIOPS,
+					v.namespace,
+					v.dataCenters,
+					v.currentTime)
 			}
-		}
-	
-		// may not have to use hash table for aggregation, duplicate filter
-		// since aggregation is done in aggResources()
-		// and duplicates should be filtered out by separate cluster addresses
-		// i := 0
-
-		for _, val := range m {
-			insert.Exec(val.JobID,
-						val.uTicks,
-						val.rCPU,
-						val.uRSS,
-						val.rMemoryMB,
-						val.rdiskMB,
-						val.rIOPS,
-						val.namespace,
-						val.dataCenters,
-						val.currentTime)
 		}
 
 		printRowsDB(db)
 		
-		// rows, _ := db.Query("SELECT * FROM resources")
-
-		// var JobID, namespace, dataCenters, currentTime string
-		// var uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS float64
-		// var id int
-
-		// for rows.Next() {
-		// 	rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
-		// 	fmt.Println(strconv.Itoa(id) + ": ", JobID, uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, namespace, dataCenters, currentTime)
-		// }
 		fmt.Println("Elapsed:", end.Sub(begin))
 		time.Sleep(duration)
 	}
