@@ -199,8 +199,8 @@ func config() ([]string, int, time.Duration) {
 
 // Initialize database
 // Configure insert SQL statement
-func initDB() (*sql.DB, *sql.Stmt) {
-	db, errOpen := sql.Open("sqlite3", "resources.db")
+func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
+	db, errOpen := sql.Open("sqlite3", nameDB + ".db")
 
 	if errOpen != nil {
 		log.Fatal("Error:", errOpen)
@@ -257,7 +257,7 @@ func printRowsDB(db *sql.DB) {
 func main() {
 	addresses, buffer, duration := config()
 
-	db, insert := initDB()
+	db, insert := initDB("resources")
 	
 	// While loop for scrape frequency
 	for {
