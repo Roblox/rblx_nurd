@@ -78,13 +78,13 @@ func aggUsageResources(address, jobID string, e chan error) (float64, float64) {
 				kernelMaxUsage := memoryStats["KernelMaxUsage"]
 				ticks := cpuStats["TotalTicks"]
 
-				rssTotal += rss.(float64) / 1e6
-				cacheTotal += cache.(float64) / 1e6
-				swapTotal += swap.(float64) / 1e6
-				usageTotal += usage.(float64) / 1e6
-				maxUsageTotal += maxUsage.(float64) / 1e6
-				kernelUsageTotal += kernelUsage.(float64) / 1e6
-				kernelMaxUsageTotal += kernelMaxUsage.(float64) / 1e6
+				rssTotal += rss.(float64) / 1.049e6
+				cacheTotal += cache.(float64) / 1.049e6
+				swapTotal += swap.(float64) / 1.049e6
+				usageTotal += usage.(float64) / 1.049e6
+				maxUsageTotal += maxUsage.(float64) / 1.049e6
+				kernelUsageTotal += kernelUsage.(float64) / 1.049e6
+				kernelMaxUsageTotal += kernelMaxUsage.(float64) / 1.049e6
 				ticksTotal += ticks.(float64)
 			}
 		}
