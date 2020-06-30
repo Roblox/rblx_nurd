@@ -10,13 +10,13 @@ import (
 // Initialize database
 // Configure insert SQL statement
 func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
-	db, errOpen := sql.Open("sqlite3", nameDB+".out")
+	db, err := sql.Open("sqlite3", nameDB+".out")
 
-	if errOpen != nil {
-		log.Fatal("Error:", errOpen)
+	if err != nil {
+		log.Fatal("Error:", err)
 	}
 
-	createTable, errCreateTable := db.Prepare(`CREATE TABLE IF NOT EXISTS resources (id INTEGER PRIMARY KEY,
+	createTable, err := db.Prepare(`CREATE TABLE IF NOT EXISTS resources (id INTEGER PRIMARY KEY,
 		JobID TEXT,
 		uTicks REAL,
 		rCPU REAL, 
@@ -30,11 +30,11 @@ func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
 		date DATETIME)`)
 	createTable.Exec()
 
-	if errCreateTable != nil {
-		log.Fatal("Error:", errCreateTable)
+	if err != nil {
+		log.Fatal("Error:", err)
 	}
 
-	insert, errInsert := db.Prepare(`INSERT INTO resources (JobID,
+	insert, err := db.Prepare(`INSERT INTO resources (JobID,
 		uTicks, 
 		rCPU,
 		uRSS,
@@ -46,15 +46,19 @@ func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
 		dataCenters,
 		date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 
-	if errInsert != nil {
-		log.Fatal("Error:", errInsert)
+	if err != nil {
+		log.Fatal("Error:", err)
 	}
 
 	return db, insert
 }
 
 func printRowsDB(db *sql.DB) {
-	rows, _ := db.Query("SELECT * FROM resources")
+	rows, err := db.Query("SELECT * FROM resources")
+
+	if err != nil {
+		log.Fatal("Error:", err)
+	}
 
 	var JobID, namespace, dataCenters, currentTime string
 	var uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, pRSS float64

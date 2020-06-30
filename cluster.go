@@ -68,16 +68,16 @@ func aggUsageResources(address, jobID, name string, e chan error) (float64, floa
 	promAllocs := getAllocIDFromProm("***REMOVED***:***REMOVED***")
 
 	api := "http://" + address + "/v1/job/" + jobID + "/allocations"
-	response, errHttp := http.Get(api)
+	response, err := http.Get(api)
 	// errHttp = errors.New("HTTP ERROR - aggUsageResources(address, jobID, e)")
-	if errHttp != nil {
-		e <- errHttp
+	if err != nil {
+		e <- err
 	}
 
-	data, errIoutil := ioutil.ReadAll(response.Body)
+	data, err := ioutil.ReadAll(response.Body)
 	// errIoutil = errors.New("IOUTIL ERROR - aggUsageResources(address, jobID, e)")
-	if errIoutil != nil {
-		e <- errIoutil
+	if err != nil {
+		e <- err
 	}
 
 	sliceOfAllocs := []byte(string(data))
