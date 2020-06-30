@@ -10,6 +10,9 @@ import (
 	"strconv"
 	// "strings"
 	"sync"
+
+	"time"
+	"log"
 	
 	_ "github.com/mattn/go-sqlite3"
 )
