@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -20,10 +19,9 @@ func main() {
 	for {
 		c := make(chan []JobData, buffer)
 		e := make(chan error)
-		// m := make(map[string]JobData)
 
-		begin := time.Now()
-
+		defer close(c)
+		
 		// Listen for errors
 		go func(e chan error) {
 			err := <-e
@@ -37,9 +35,6 @@ func main() {
 		}
 
 		wg.Wait()
-		close(c)
-
-		end := time.Now()
 
 		// Insert into db from channel
 		for jobDataSlice := range c {
@@ -59,7 +54,6 @@ func main() {
 		}
 
 		printRowsDB(db)
-		fmt.Println("Elapsed:", end.Sub(begin))
 		time.Sleep(duration)
 	}
 }
