@@ -1,10 +1,8 @@
 package main
 
 import (
-	// "fmt"
 	"os"
 	"reflect"
-	// "strconv"
 	"testing"
 	"time"
 )
@@ -24,7 +22,7 @@ func TestConfig(t *testing.T) {
 	if dur != minute {
 		t.Errorf("\nExpected: 60000000000\nActual: %d", dur)
 	}
-} 
+}
 
 func TestInitDB(t *testing.T) {
 	db, insert := initDB("test")
@@ -40,7 +38,7 @@ func TestInitDB(t *testing.T) {
 	}
 
 	currentTime := time.Now().Format("2006-01-02 15:04:05")
-	result, errInsert := insert.Exec("JobID", 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, "namespace", "DC", currentTime) 
+	result, errInsert := insert.Exec("JobID", 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, "namespace", "DC", currentTime)
 	if errInsert != nil {
 		t.Errorf("\nExpected: nil\nActual: %d", errInsert)
 	}
@@ -56,7 +54,7 @@ func TestInitDB(t *testing.T) {
 	if len(columnsActual) != 11 {
 		t.Errorf("\nExpected: 11\nActual: %d", len(columnsActual))
 	}
-	
+
 	for i := range columnsExpected {
 		if columnsActual[i] != columnsExpected[i] {
 			t.Errorf("\nExpected: %v\nActual: %v", columnsExpected[i], columnsActual[i])
@@ -71,9 +69,7 @@ func TestInitDB(t *testing.T) {
 		rows.Scan(&id, &JobID, &uTicks, &rCPU, &uRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currTime)
 	}
 	nowTime := time.Now().Format("2006-01-02T15:04:05Z")
-	if currTime !=  nowTime {
+	if currTime != nowTime {
 		t.Errorf("\nExpected: %v\nActual: %v", currTime, nowTime)
 	}
 }
-
-// func TestPrintRowsDB

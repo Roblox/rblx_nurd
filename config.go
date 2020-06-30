@@ -14,6 +14,6 @@ func Config() ([]string, int, time.Duration) {
 	if errParseDuration != nil {
 		log.Fatal("Error:", errParseDuration)
 	}
-	
+
 	return addresses, buffer, duration
 }
