@@ -6,12 +6,10 @@ import (
 	// "errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	// "strings"
 	"sync"
-	"time"
 	
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -260,19 +258,6 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 	wg.Done()
 }
 
-// Configure the cluster addresses and frequency of monitor
-func config() ([]string, int, time.Duration) {
-	addresses := []string{"***REMOVED***:***REMOVED***"} // one address per cluster
-	buffer := len(addresses)
-	duration, errParseDuration := time.ParseDuration("1m")
-
-	if errParseDuration != nil {
-		log.Fatal("Error:", errParseDuration)
-	}
-	
-	return addresses, buffer, duration
-}
-
 // Initialize database
 // Configure insert SQL statement
 func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
@@ -333,7 +318,7 @@ func printRowsDB(db *sql.DB) {
 }
 
 func main() {
-	addresses, buffer, duration := config()
+	addresses, buffer, duration := Config()
 
 	db, insert := initDB("resources")
 	
