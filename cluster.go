@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"fmt"
 )
 
 type JobData struct {
@@ -23,21 +25,41 @@ type JobData struct {
 	currentTime string
 }
 
+type RawAlloc struct {
+	status string
+	data   DataMap
+}
+
+type DataMap struct {
+	resultType string
+	result     []AllocValue
+}
+
+type AllocValue struct {
+	metric Metric
+	value []interface{}
+}
+
+type Metric struct {
+	alloc_id string
+}
+
 func getAllocIDFromProm(address string) map[string]string {
 	api := "http://" + address + "/api/v1/query?query=nomad_client_allocs_memory_allocated_value"
 	response, _ := http.Get(api)
 
 	raw, _ := ioutil.ReadAll(response.Body)
-	var allocs map[string]interface{}
+	var allocs RawAlloc //map[string]interface{}
 	json.Unmarshal([]byte(string(raw)), &allocs)
 
-	data := allocs["data"].(map[string]interface{})
-	result := data["result"].([]interface{})
+	data := allocs.data // ["data"].(map[string]interface{})
+	fmt.Println("result []")
+	result := data.result // ["result"].([]interface{})
 
 	// fmt.Println(result[0].(map[string]interface{})["metric"].(map[string]interface{})["job"])
 	m := make(map[string]string)
 	for _, v := range result {
-		alloc_id := v.(map[string]interface{})["metric"].(map[string]interface{})["alloc_id"].(string)
+		alloc_id := v.value[1].(string) // .(map[string]interface{})["metric"].(map[string]interface{})["alloc_id"].(string)
 		m[alloc_id] = "value"
 	}
 	return m
@@ -146,7 +168,9 @@ func aggUsageResources(address, jobID, name string, e chan error) (float64, floa
 	promData, _ := ioutil.ReadAll(promResponse.Body)
 	var promStats map[string]interface{}
 	json.Unmarshal([]byte(string(promData)), &promStats)
+	fmt.Println("len(data->result) []")
 	if len(promStats["data"].(map[string]interface{})["result"].([]interface{})) != 0 {
+		fmt.Println("ParseFloat(data->result) []")
 		num, _ := strconv.ParseFloat(promStats["data"].(map[string]interface{})["result"].([]interface{})[0].(map[string]interface{})["value"].([]interface{})[1].(string), 64)
 		rssProm += num / 1.049e6
 	}
@@ -174,10 +198,11 @@ func aggReqResources(address, jobID string, e chan error) (float64, float64, flo
 	jobJSON := string(data)
 	var jobSpec map[string]interface{}
 	json.Unmarshal([]byte(jobJSON), &jobSpec)
-
+	fmt.Println("taskGroups []")
 	taskGroups := jobSpec["TaskGroups"].([]interface{})
 	for _, taskGroup := range taskGroups {
 		count := taskGroup.(map[string]interface{})["Count"].(float64)
+		fmt.Println("tasks []")
 		tasks := taskGroup.(map[string]interface{})["Tasks"].([]interface{})
 
 		for _, task := range tasks {
@@ -218,6 +243,7 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 		ticksUsage, rssUsage, rssProm := aggUsageResources(address, jobID, name, e)
 		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(address, jobID, e)
 		namespace := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["Namespace"].(string)
+		fmt.Println("dataCentersSlice []")
 		dataCentersSlice := keys[i].(map[string]interface{})["Datacenters"].([]interface{})
 		var dataCenters string
 		for i, v := range dataCentersSlice {

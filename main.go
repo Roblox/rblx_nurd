@@ -20,8 +20,6 @@ func main() {
 		c := make(chan []JobData, buffer)
 		e := make(chan error)
 
-		defer close(c)
-		
 		// Listen for errors
 		go func(e chan error) {
 			err := <-e
@@ -35,6 +33,7 @@ func main() {
 		}
 
 		wg.Wait()
+		close(c)
 
 		// Insert into db from channel
 		for jobDataSlice := range c {
