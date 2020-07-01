@@ -8,7 +8,7 @@ import (
 )
 
 func TestConfig(t *testing.T) {
-	add, buf, dur := config()
+	add, buf, dur := Config()
 
 	if reflect.TypeOf(add[0]).Kind() != reflect.String {
 		t.Errorf("\nExpected: string\nActual: %T", add[0])

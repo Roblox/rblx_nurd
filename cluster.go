@@ -26,42 +26,46 @@ type JobData struct {
 }
 
 type RawAlloc struct {
-	status string
-	data   DataMap
+	Status string
+	Data   DataMap
 }
 
 type DataMap struct {
-	resultType string
-	result     []AllocValue
+	ResultType string
+	Result     []MetVal
 }
 
-type AllocValue struct {
-	metric Metric
-	value []interface{}
+type MetVal struct {
+	Metric MetricType
+	Value  []interface{}
 }
 
-type Metric struct {
-	alloc_id string
+type MetricType struct {
+	Alloc_id string
 }
 
-func getAllocIDFromProm(address string) map[string]string {
-	api := "http://" + address + "/api/v1/query?query=nomad_client_allocs_memory_allocated_value"
-	response, _ := http.Get(api)
+func getAllocIDFromProm(address string, e chan error) map[string]struct{} {
+	api := "http://" + address + "/api/v1/query?query=nomad_client_allocs_memory_rss_value"
+	response, _ := http.Get(api) // customize for timeout
 
-	raw, _ := ioutil.ReadAll(response.Body)
+	// raw, _ := ioutil.ReadAll(response.Body)
 	var allocs RawAlloc //map[string]interface{}
-	json.Unmarshal([]byte(string(raw)), &allocs)
-
-	data := allocs.data // ["data"].(map[string]interface{})
-	fmt.Println("result []")
-	result := data.result // ["result"].([]interface{})
-
-	// fmt.Println(result[0].(map[string]interface{})["metric"].(map[string]interface{})["job"])
-	m := make(map[string]string)
-	for _, v := range result {
-		alloc_id := v.value[1].(string) // .(map[string]interface{})["metric"].(map[string]interface{})["alloc_id"].(string)
-		m[alloc_id] = "value"
+	err := json.NewDecoder(response.Body).Decode(&allocs)
+	if err != nil {
+		e <- err
 	}
+	// json.Unmarshal([]byte(string(raw)), &allocs)
+
+	data := allocs.Data   // ["data"].(map[string]interface{})
+	result := data.Result // ["result"].([]interface{})
+
+	m := make(map[string]struct{})
+	var Empty struct{}
+	for _, v := range result {
+		alloc_id := v.Metric.Alloc_id // .(map[string]interface{})["metric"].(map[string]interface{})["alloc_id"].(string)
+		m[alloc_id] = Empty
+	}
+
 	return m
 }
 
@@ -87,8 +91,7 @@ func getAllocIDFromNomadByJobID(address, jobID string) map[string]string {
 // Aggregate total CPU, memory usage for a job
 func aggUsageResources(address, jobID, name string, e chan error) (float64, float64, float64) {
 	var ticksTotal, rssTotal, cacheTotal, swapTotal, usageTotal, maxUsageTotal, kernelUsageTotal, kernelMaxUsageTotal, rssProm float64
-	promAllocs := getAllocIDFromProm("***REMOVED***:***REMOVED***")
-
+	promAllocs := getAllocIDFromProm("***REMOVED***:***REMOVED***", e)
 	api := "http://" + address + "/v1/job/" + jobID + "/allocations"
 	response, err := http.Get(api)
 	// errHttp = errors.New("HTTP ERROR - aggUsageResources(address, jobID, e)")
@@ -102,13 +105,12 @@ func aggUsageResources(address, jobID, name string, e chan error) (float64, floa
 		e <- err
 	}
 
-	sliceOfAllocs := []byte(string(data))
-	keys := make([]interface{}, 0)
-	json.Unmarshal(sliceOfAllocs, &keys)
+	allocs := make([]interface{}, 0)
+	json.Unmarshal([]byte(string(data)), &allocs)
 
-	for i := range keys {
-		allocID := keys[i].(map[string]interface{})["ID"].(string)
-		clientStatus := keys[i].(map[string]interface{})["ClientStatus"].(string)
+	for i := range allocs {
+		allocID := allocs[i].(map[string]interface{})["ID"].(string)
+		clientStatus := allocs[i].(map[string]interface{})["ClientStatus"].(string)
 
 		if clientStatus != "lost" {
 			clientAllocAPI := "http://" + address + "/v1/client/allocation/" + allocID + "/stats"
@@ -143,10 +145,9 @@ func aggUsageResources(address, jobID, name string, e chan error) (float64, floa
 	}
 
 	nomadAllocs := getAllocIDFromNomadByJobID(address, jobID)
-
-	for key := range nomadAllocs {
-		if _, ok := promAllocs[key]; !ok { // if key is not in promAllocs
-			clientAllocAPI := "http://" + address + "/v1/client/allocation/" + key + "/stats"
+	for allocID := range nomadAllocs {
+		if _, ok := promAllocs[allocID]; !ok { // if key is not in promAllocs
+			clientAllocAPI := "http://" + address + "/v1/client/allocation/" + allocID + "/stats"
 			allocResponse, _ := http.Get(clientAllocAPI)
 			allocData, _ := ioutil.ReadAll(allocResponse.Body)
 			var allocStats map[string]interface{}
@@ -155,7 +156,6 @@ func aggUsageResources(address, jobID, name string, e chan error) (float64, floa
 			if allocStats["ResourceUsage"] != nil {
 				resourceUsage := allocStats["ResourceUsage"].(map[string]interface{})
 				memoryStats := resourceUsage["MemoryStats"].(map[string]interface{})
-
 				rssProm += memoryStats["RSS"].(float64) / 1.049e6
 			}
 
@@ -168,9 +168,7 @@ func aggUsageResources(address, jobID, name string, e chan error) (float64, floa
 	promData, _ := ioutil.ReadAll(promResponse.Body)
 	var promStats map[string]interface{}
 	json.Unmarshal([]byte(string(promData)), &promStats)
-	fmt.Println("len(data->result) []")
 	if len(promStats["data"].(map[string]interface{})["result"].([]interface{})) != 0 {
-		fmt.Println("ParseFloat(data->result) []")
 		num, _ := strconv.ParseFloat(promStats["data"].(map[string]interface{})["result"].([]interface{})[0].(map[string]interface{})["value"].([]interface{})[1].(string), 64)
 		rssProm += num / 1.049e6
 	}
@@ -195,10 +193,20 @@ func aggReqResources(address, jobID string, e chan error) (float64, float64, flo
 		e <- errIoutil
 	}
 
+	// if string(data) == "job not found" {
+	// 	fmt.Println("Job not Found.")
+	// 	return 0, 0, 0, 0
+	// }
+
 	jobJSON := string(data)
 	var jobSpec map[string]interface{}
 	json.Unmarshal([]byte(jobJSON), &jobSpec)
 	fmt.Println("taskGroups []")
+
+	if jobSpec["TaskGroups"] == nil {
+		fmt.Println("TASKGROUPS NIL\nJOB:", jobID)
+	}
+
 	taskGroups := jobSpec["TaskGroups"].([]interface{})
 	for _, taskGroup := range taskGroups {
 		count := taskGroup.(map[string]interface{})["Count"].(float64)
@@ -225,33 +233,28 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 		e <- errHttp
 	}
 
-	data, errIoutil := ioutil.ReadAll(response.Body)
-	// errIoutil = errors.New("IOUTIL ERROR - reachCluster(address, c, e)")
-	if errIoutil != nil {
-		e <- errIoutil
-	}
+	jobsRaw := make([]interface{}, 0)
+	json.NewDecoder(response.Body).Decode(&jobsRaw)
+	var jobsClean []JobData
 
-	sliceOfJsons := string(data)
-	keysBody := []byte(sliceOfJsons)
-	keys := make([]interface{}, 0)
-	json.Unmarshal(keysBody, &keys)
-	var jobDataSlice []JobData
-
-	for i := range keys {
-		jobID := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"].(string) // unpack JobID from JSON
-		name := keys[i].(map[string]interface{})["Name"].(string)
+	for i := range jobsRaw {
+		jobID := jobsRaw[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"].(string) // unpack JobID from JSON
+		name := jobsRaw[i].(map[string]interface{})["Name"].(string)
 		ticksUsage, rssUsage, rssProm := aggUsageResources(address, jobID, name, e)
 		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(address, jobID, e)
-		namespace := keys[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["Namespace"].(string)
+		namespace := jobsRaw[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["Namespace"].(string)
 		fmt.Println("dataCentersSlice []")
-		dataCentersSlice := keys[i].(map[string]interface{})["Datacenters"].([]interface{})
+		dataCentersSlice := jobsRaw[i].(map[string]interface{})["Datacenters"].([]interface{})
+
 		var dataCenters string
+
 		for i, v := range dataCentersSlice {
 			dataCenters += v.(string)
 			if i != len(dataCentersSlice)-1 {
 				dataCenters += " "
 			}
 		}
+
 		currentTime := time.Now().Format("2006-01-02 15:04:05")
 		jobData := JobData{
 			jobID,
@@ -266,10 +269,10 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 			namespace,
 			dataCenters,
 			currentTime}
-		jobDataSlice = append(jobDataSlice, jobData)
+		jobsClean = append(jobsClean, jobData)
 	}
 
-	c <- jobDataSlice
+	c <- jobsClean
 
 	wg.Done()
 }
