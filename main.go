@@ -11,7 +11,7 @@ import (
 var wg sync.WaitGroup
 
 func main() {
-	addresses, buffer, duration := Config()
+	addresses, metricsAddress, buffer, duration := Config()
 
 	db, insert := initDB("resources")
 
@@ -29,7 +29,7 @@ func main() {
 		// Goroutines for each cluster address
 		for _, address := range addresses {
 			wg.Add(1)
-			go reachCluster(address, c, e)
+			go reachCluster(address, metricsAddress, c, e)
 		}
 
 		wg.Wait()
@@ -40,6 +40,7 @@ func main() {
 			for _, v := range jobDataSlice {
 				insert.Exec(v.JobID,
 					v.uTicks,
+					v.pTicks,
 					v.rCPU,
 					v.uRSS,
 					v.pRSS,

@@ -6,8 +6,9 @@ import (
 )
 
 // Configure the cluster addresses and frequency of monitor
-func Config() ([]string, int, time.Duration) {
+func Config() ([]string, string, int, time.Duration) {
 	addresses := []string{"***REMOVED***:***REMOVED***"} // one address per cluster
+	metricsAddress := "***REMOVED***:***REMOVED***"
 	buffer := len(addresses)
 	duration, err := time.ParseDuration("1m")
 
@@ -15,5 +16,5 @@ func Config() ([]string, int, time.Duration) {
 		log.Fatal("Error:", err)
 	}
 
-	return addresses, buffer, duration
+	return addresses, metricsAddress, buffer, duration
 }

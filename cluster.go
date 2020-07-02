@@ -14,6 +14,7 @@ type JobData struct {
 	JobID       string
 	name        string
 	uTicks      float64
+	pTicks		float64
 	rCPU        float64
 	uRSS        float64
 	pRSS        float64
@@ -44,33 +45,32 @@ type MetricType struct {
 	Alloc_id string
 }
 
-func getAllocIDFromProm(address string, e chan error) map[string]struct{} {
-	api := "http://" + address + "/api/v1/query?query=nomad_client_allocs_memory_rss_value"
-	response, _ := http.Get(api) // customize for timeout
-
-	// raw, _ := ioutil.ReadAll(response.Body)
-	var allocs RawAlloc //map[string]interface{}
-	err := json.NewDecoder(response.Body).Decode(&allocs)
+func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct{} {
+	api := "http://" + clusterAddress + "/api/v1/query?query=" + query //nomad_client_allocs_memory_rss_value
+	response, err := http.Get(api) // customize for timeout
 	if err != nil {
 		e <- err
 	}
-	// json.Unmarshal([]byte(string(raw)), &allocs)
 
-	data := allocs.Data   // ["data"].(map[string]interface{})
-	result := data.Result // ["result"].([]interface{})
+	var allocs RawAlloc 
+	err = json.NewDecoder(response.Body).Decode(&allocs)
+	if err != nil {
+		e <- err
+	}
 
+	result := allocs.Data.Result
 	m := make(map[string]struct{})
 	var Empty struct{}
 	for _, v := range result {
-		alloc_id := v.Metric.Alloc_id // .(map[string]interface{})["metric"].(map[string]interface{})["alloc_id"].(string)
+		alloc_id := v.Metric.Alloc_id
 		m[alloc_id] = Empty
 	}
 
 	return m
 }
 
-func getAllocIDFromNomadByJobID(address, jobID string) map[string]string {
-	api := "http://" + address + "/v1/job/" + jobID + "/allocations"
+func getNomadAllocs(clusterAddress, jobID string) map[string]string {
+	api := "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
 	response, _ := http.Get(api)
 	data, _ := ioutil.ReadAll(response.Body)
 
@@ -89,10 +89,10 @@ func getAllocIDFromNomadByJobID(address, jobID string) map[string]string {
 }
 
 // Aggregate total CPU, memory usage for a job
-func aggUsageResources(address, jobID, name string, e chan error) (float64, float64, float64) {
-	var ticksTotal, rssTotal, cacheTotal, swapTotal, usageTotal, maxUsageTotal, kernelUsageTotal, kernelMaxUsageTotal, rssProm float64
-	promAllocs := getAllocIDFromProm("***REMOVED***:***REMOVED***", e)
-	api := "http://" + address + "/v1/job/" + jobID + "/allocations"
+func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64, float64) {
+	var ticksTotal, rssTotal, cacheTotal, swapTotal, usageTotal, maxUsageTotal, kernelUsageTotal, kernelMaxUsageTotal, rssProm, ticksProm float64
+	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_rss_value", e)
+	api := "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
 	response, err := http.Get(api)
 	// errHttp = errors.New("HTTP ERROR - aggUsageResources(address, jobID, e)")
 	if err != nil {
@@ -113,7 +113,7 @@ func aggUsageResources(address, jobID, name string, e chan error) (float64, floa
 		clientStatus := allocs[i].(map[string]interface{})["ClientStatus"].(string)
 
 		if clientStatus != "lost" {
-			clientAllocAPI := "http://" + address + "/v1/client/allocation/" + allocID + "/stats"
+			clientAllocAPI := "http://" + clusterAddress + "/v1/client/allocation/" + allocID + "/stats"
 			allocResponse, _ := http.Get(clientAllocAPI)
 			allocData, _ := ioutil.ReadAll(allocResponse.Body)
 			var allocStats map[string]interface{}
@@ -144,26 +144,32 @@ func aggUsageResources(address, jobID, name string, e chan error) (float64, floa
 		}
 	}
 
-	nomadAllocs := getAllocIDFromNomadByJobID(address, jobID)
+	// NEW DATA SOURCE
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
 	for allocID := range nomadAllocs {
-		if _, ok := promAllocs[allocID]; !ok { // if key is not in promAllocs
-			clientAllocAPI := "http://" + address + "/v1/client/allocation/" + allocID + "/stats"
-			allocResponse, _ := http.Get(clientAllocAPI)
-			allocData, _ := ioutil.ReadAll(allocResponse.Body)
+		if _, ok := promAllocs[allocID]; !ok { // if key is not in promAllocs with specified query, get from nomad
+			clientAllocAPI := "http://" + clusterAddress + "/v1/client/allocation/" + allocID + "/stats"
+			response, err := http.Get(clientAllocAPI)
+			if err != nil {
+				e <- err
+			}
+			// allocData, _ := ioutil.ReadAll(allocResponse.Body)
 			var allocStats map[string]interface{}
-			json.Unmarshal([]byte(string(allocData)), &allocStats)
+			// json.Unmarshal([]byte(string(allocData)), &allocStats)
+			json.NewDecoder(response.Body).Decode(&allocStats)
 
 			if allocStats["ResourceUsage"] != nil {
 				resourceUsage := allocStats["ResourceUsage"].(map[string]interface{})
 				memoryStats := resourceUsage["MemoryStats"].(map[string]interface{})
+				cpuStats := resourceUsage["CpuStats"].(map[string]interface{})
 				rssProm += memoryStats["RSS"].(float64) / 1.049e6
+				ticksProm += cpuStats["TotalTicks"].(float64)
 			}
 
 		}
 	}
-	// Here: sum remaining usage stats from prom
-	// rssTotal += sum(prom RSS)
-	promAPI := "http://***REMOVED***:***REMOVED***/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
+	// Here: sum remaining RSS stats from prom
+	promAPI := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
 	promResponse, _ := http.Get(promAPI)
 	promData, _ := ioutil.ReadAll(promResponse.Body)
 	var promStats map[string]interface{}
@@ -173,44 +179,45 @@ func aggUsageResources(address, jobID, name string, e chan error) (float64, floa
 		rssProm += num / 1.049e6
 	}
 
-	return ticksTotal, rssTotal, rssProm
+	// fmt.Println("here")
+	// promAPI = "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
+	// promResponse, _ = http.Get(promAPI)
+	// promData, _ = ioutil.ReadAll(promResponse.Body)
+	// var promStats2 map[string]interface{}
+	// json.Unmarshal([]byte(string(promData)), &promStats2)
+	// if len(promStats2["data"].(map[string]interface{})["result"].([]interface{})) != 0 {
+	// 	num, _ := strconv.ParseFloat(promStats["data"].(map[string]interface{})["result"].([]interface{})[0].(map[string]interface{})["value"].([]interface{})[1].(string), 64)
+	// 	ticksProm += num 
+	// }
+	// ticksProm = 999
+
+
+
+	return ticksTotal, rssTotal, rssProm, ticksProm
 }
 
 // Aggregate resources requested by a job
-func aggReqResources(address, jobID string, e chan error) (float64, float64, float64, float64) {
+func aggReqResources(clusterAddress, jobID string, e chan error) (float64, float64, float64, float64) {
 	var CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal float64
 
-	api := "http://" + address + "/v1/job/" + jobID
-	response, errHttp := http.Get(api)
+	api := "http://" + clusterAddress + "/v1/job/" + jobID
+	response, err := http.Get(api)
 	// errHttp = errors.New("HTTP ERROR - aggReqResources(address, jobID, e)")
-	if errHttp != nil {
-		e <- errHttp
+	if err != nil {
+		e <- err
 	}
 
-	data, errIoutil := ioutil.ReadAll(response.Body)
-	// errIoutil = errors.New("IOUTIL ERROR - aggReqResources(address, jobID, e)")
-	if errIoutil != nil {
-		e <- errIoutil
-	}
-
-	// if string(data) == "job not found" {
-	// 	fmt.Println("Job not Found.")
-	// 	return 0, 0, 0, 0
-	// }
-
-	jobJSON := string(data)
 	var jobSpec map[string]interface{}
-	json.Unmarshal([]byte(jobJSON), &jobSpec)
-	fmt.Println("taskGroups []")
+	json.NewDecoder(response.Body).Decode(&jobSpec)
 
 	if jobSpec["TaskGroups"] == nil {
 		fmt.Println("TASKGROUPS NIL\nJOB:", jobID)
+		return 0, 0, 0, 0
 	}
 
 	taskGroups := jobSpec["TaskGroups"].([]interface{})
 	for _, taskGroup := range taskGroups {
 		count := taskGroup.(map[string]interface{})["Count"].(float64)
-		fmt.Println("tasks []")
 		tasks := taskGroup.(map[string]interface{})["Tasks"].([]interface{})
 
 		for _, task := range tasks {
@@ -221,16 +228,17 @@ func aggReqResources(address, jobID string, e chan error) (float64, float64, flo
 			IOPSTotal += count * resources["IOPS"].(float64)
 		}
 	}
+
 	return CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal
 }
 
 // Access a single cluster
-func reachCluster(address string, c chan []JobData, e chan error) {
-	api := "http://" + address + "/v1/jobs"
-	response, errHttp := http.Get(api)
+func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e chan error) {
+	api := "http://" + clusterAddress + "/v1/jobs"
+	response, err := http.Get(api)
 	// errHttp = errors.New("HTTP ERROR - reachCluster(address, c, e)")
-	if errHttp != nil {
-		e <- errHttp
+	if err != nil {
+		e <- err
 	}
 
 	jobsRaw := make([]interface{}, 0)
@@ -240,10 +248,9 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 	for i := range jobsRaw {
 		jobID := jobsRaw[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"].(string) // unpack JobID from JSON
 		name := jobsRaw[i].(map[string]interface{})["Name"].(string)
-		ticksUsage, rssUsage, rssProm := aggUsageResources(address, jobID, name, e)
-		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(address, jobID, e)
+		ticksUsage, rssUsage, rssProm, ticksProm := aggUsageResources(clusterAddress, metricsAddress, jobID, name, e)
+		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(clusterAddress, jobID, e)
 		namespace := jobsRaw[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["Namespace"].(string)
-		fmt.Println("dataCentersSlice []")
 		dataCentersSlice := jobsRaw[i].(map[string]interface{})["Datacenters"].([]interface{})
 
 		var dataCenters string
@@ -260,6 +267,7 @@ func reachCluster(address string, c chan []JobData, e chan error) {
 			jobID,
 			name,
 			ticksUsage,
+			ticksProm,
 			CPUTotal,
 			rssUsage,
 			rssProm,
