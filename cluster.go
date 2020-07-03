@@ -8,18 +8,19 @@ import (
 	"time"
 
 	"fmt"
+	"sync"
 )
+
+var wg2 sync.WaitGroup
+
 
 type JobData struct {
 	JobID       string
 	name        string
 	uTicks      float64
-	pTicks      float64
 	rCPU        float64
 	uRSS        float64
-	pRSS        float64
-	uCache float64
-	pCache float64
+	uCache 		float64
 	rMemoryMB   float64
 	rdiskMB     float64
 	rIOPS       float64
@@ -148,10 +149,9 @@ func getNomadAllocs(clusterAddress, jobID string) map[string]string {
 	return m
 }
 
-func getRSS(clusterAddress, metricsAddress, jobID, name string, e chan error) float64 {
+func getRSS(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
 	var rss float64
 
-	// Sum RSS stats from Prometheus
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
@@ -164,33 +164,21 @@ func getRSS(clusterAddress, metricsAddress, jobID, name string, e chan error) fl
 		rss += num / 1.049e6
 	}
 
-	// Get remaining data from Nomad
 	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
 	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_rss_value", e)
 	for allocID := range nomadAllocs {
 		if _, ok := promAllocs[allocID]; !ok {
-			api := "http://" + clusterAddress + "/v1/client/allocation/" + allocID + "/stats"
-			response, err := http.Get(api)
-			if err != nil {
-				e <- err
-			}
-			var nomadAlloc NomadAlloc
-			json.NewDecoder(response.Body).Decode(&nomadAlloc)
-			if nomadAlloc.ResourceUsage != (MemCPU{}) {
-				resourceUsage := nomadAlloc.ResourceUsage
-				memoryStats := resourceUsage.MemoryStats
-				rss += memoryStats.RSS / 1.049e6
-			}
+			remainders[allocID] = append(remainders[allocID], "rss")
 		}
 	}
 
+	wg2.Done()
 	return rss
 }
 
-func getCache(clusterAddress, metricsAddress, jobID, name string, e chan error) float64 {
+func getCache(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
 	var cache float64
 
-	// Sum RSS stats from Prometheus
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
@@ -203,82 +191,107 @@ func getCache(clusterAddress, metricsAddress, jobID, name string, e chan error) 
 		cache += num / 1.049e6
 	}
 
-	// Get remaining data from Nomad
 	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
 	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_cache_value", e)
 	for allocID := range nomadAllocs {
 		if _, ok := promAllocs[allocID]; !ok {
-			api := "http://" + clusterAddress + "/v1/client/allocation/" + allocID + "/stats"
-			response, err := http.Get(api)
-			if err != nil {
-				e <- err
-			}
-			var nomadAlloc NomadAlloc
-			json.NewDecoder(response.Body).Decode(&nomadAlloc)
-			if nomadAlloc.ResourceUsage != (MemCPU{}) {
-				resourceUsage := nomadAlloc.ResourceUsage
-				memoryStats := resourceUsage.MemoryStats
-				cache += memoryStats.Cache / 1.049e6
-			}
+			remainders[allocID] = append(remainders[allocID], "cache")
 		}
 	}
 
+	wg2.Done()
 	return cache
 }
 
-func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64, float64, float64, float64) {
-	var ticksTotal, rssTotal, cacheTotal, cacheProm, swapTotal, usageTotal, maxUsageTotal, kernelUsageTotal, kernelMaxUsageTotal, rssProm, ticksProm float64
+func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
+	var ticks float64
 
-	// NEW
-	// consider using goroutines here also bc takes a while
-	rssProm = getRSS(clusterAddress, metricsAddress, jobID, name, e)
-	cacheProm = getCache(clusterAddress, metricsAddress, jobID, name, e)
-
-	// OLD
-	api := "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
+	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
 		e <- err
 	}
-	allocs := make([]interface{}, 0)
-	json.NewDecoder(response.Body).Decode(&allocs)
-	for i := range allocs {
-		allocID := allocs[i].(map[string]interface{})["ID"].(string)
-		clientStatus := allocs[i].(map[string]interface{})["ClientStatus"].(string)
+	var promStats RawAlloc
+	json.NewDecoder(response.Body).Decode(&promStats)
+	if len(promStats.Data.Result) != 0 {
+		num, _ := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+		ticks += num 
+	}
 
-		if clientStatus != "lost" {
-			clientAllocAPI := "http://" + clusterAddress + "/v1/client/allocation/" + allocID + "/stats"
-			allocResponse, _ := http.Get(clientAllocAPI)
-			allocData, _ := ioutil.ReadAll(allocResponse.Body)
-			var allocStats map[string]interface{}
-			json.Unmarshal([]byte(string(allocData)), &allocStats)
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_cpu_total_ticks_value", e)
+	for allocID := range nomadAllocs {
+		if _, ok := promAllocs[allocID]; !ok {
+			remainders[allocID] = append(remainders[allocID], "ticks")
+		}
+	}
 
-			if allocStats["ResourceUsage"] != nil {
-				resourceUsage := allocStats["ResourceUsage"].(map[string]interface{})
-				memoryStats := resourceUsage["MemoryStats"].(map[string]interface{})
-				cpuStats := resourceUsage["CpuStats"].(map[string]interface{})
-				rss := memoryStats["RSS"]
-				cache := memoryStats["Cache"]
-				swap := memoryStats["Swap"]
-				usage := memoryStats["Usage"]
-				maxUsage := memoryStats["MaxUsage"]
-				kernelUsage := memoryStats["KernelUsage"]
-				kernelMaxUsage := memoryStats["KernelMaxUsage"]
-				ticks := cpuStats["TotalTicks"]
+	wg2.Done()
+	return ticks
+}
 
-				rssTotal += rss.(float64) / 1.049e6
-				cacheTotal += cache.(float64) / 1.049e6
-				swapTotal += swap.(float64) / 1.049e6
-				usageTotal += usage.(float64) / 1.049e6
-				maxUsageTotal += maxUsage.(float64) / 1.049e6
-				kernelUsageTotal += kernelUsage.(float64) / 1.049e6
-				kernelMaxUsageTotal += kernelMaxUsage.(float64) / 1.049e6
-				ticksTotal += ticks.(float64)
+func getRemainderNomad(clusterAddress string, remainders map[string][]string, e chan error) (float64, float64, float64) {
+	var rss, cache, ticks float64
+	
+	for allocID, slice := range remainders {
+		api := "http://" + clusterAddress + "/v1/client/allocation/" + allocID + "/stats"
+		response, err := http.Get(api)
+		if err != nil {
+			e <- err
+		}
+		var nomadAlloc NomadAlloc
+		json.NewDecoder(response.Body).Decode(&nomadAlloc)
+
+		for _, val := range slice {
+			if nomadAlloc.ResourceUsage != (MemCPU{}) {
+				resourceUsage := nomadAlloc.ResourceUsage
+				memoryStats := resourceUsage.MemoryStats
+				cpuStats := resourceUsage.CpuStats
+				if val == "rss" {
+					rss += memoryStats.RSS / 1.049e6
+				} else if val == "cache" {
+					cache += memoryStats.Cache / 1.049e6
+				} else if val == "ticks" {
+					ticks += cpuStats.TotalTicks
+				}
 			}
 		}
 	}
 
-	return ticksTotal, rssTotal, rssProm, ticksProm, cacheTotal, cacheProm
+	return rss, cache, ticks
+}
+
+func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64) {
+	var rss, ticks, cache float64
+	remainders := make(map[string][]string)
+	rssChan := make(chan float64)
+	cacheChan := make(chan float64)
+	ticksChan := make(chan float64)
+
+	wg2.Add(3)
+
+	go func() {
+		rssChan <- getRSS(clusterAddress, metricsAddress, jobID, name, remainders, e)
+	}()
+	go func() {
+		cacheChan <- getCache(clusterAddress, metricsAddress, jobID, name, remainders, e)
+	}()
+	go func() {
+		ticksChan <- getTicks(clusterAddress, metricsAddress, jobID, name, remainders, e)
+	}()
+
+	wg2.Wait()
+
+	rss = <-rssChan
+	cache = <-cacheChan
+	ticks = <-ticksChan
+
+	rssRemainder, cacheRemainder, ticksRemainder := getRemainderNomad(clusterAddress, remainders, e)
+	rss += rssRemainder
+	cache += cacheRemainder
+	ticks += ticksRemainder
+
+	return rss, ticks, cache
 }
 
 func aggReqResources(clusterAddress, jobID string, e chan error) (float64, float64, float64, float64) {
@@ -328,7 +341,7 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 		name := jobs[i].Name 
 		dataCentersSlice := jobs[i].Datacenters 
 		namespace := jobs[i].JobSummary.Namespace
-		ticksUsage, rssUsage, rssProm, ticksProm, cacheUsage, cacheProm := aggUsageResources(clusterAddress, metricsAddress, jobID, name, e)
+		rss, ticks, cache := aggUsageResources(clusterAddress, metricsAddress, jobID, name, e)
 		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(clusterAddress, jobID, e)
 
 		var dataCenters string
@@ -343,13 +356,10 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 		jobData := JobData{
 			jobID,
 			name,
-			ticksUsage,
-			ticksProm,
+			ticks,
 			CPUTotal,
-			rssUsage,
-			rssProm,
-			cacheUsage,
-			cacheProm,
+			rss,
+			cache,
 			memoryMBTotal,
 			diskMBTotal,
 			IOPSTotal,

@@ -20,12 +20,9 @@ func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
 		JobID TEXT,
 		name TEXT,
 		uTicks REAL,
-		pTicks REAL,
 		rCPU REAL, 
 		uRSS REAL,
-		pRSS REAL,
 		uCache REAL,
-		pCache REAL,
 		rMemoryMB REAL,
 		rdiskMB REAL,
 		rIOPS REAL,
@@ -41,18 +38,15 @@ func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
 	insert, err := db.Prepare(`INSERT INTO resources (JobID,
 		name,
 		uTicks,
-		pTicks, 
 		rCPU,
 		uRSS,
-		pRSS,
 		uCache,
-		pCache,
 		rMemoryMB,
 		rdiskMB,
 		rIOPS,
 		namespace,
 		dataCenters,
-		date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 
 	if err != nil {
 		log.Fatal("Error:", err)
@@ -69,13 +63,15 @@ func printRowsDB(db *sql.DB) {
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime string
-	var uTicks, rCPU, uRSS, uCache, pCache, rMemoryMB, rdiskMB, rIOPS, pRSS, pTicks float64
+	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
 	var id int
 
 	for rows.Next() {
-		rows.Scan(&id, &JobID, &name, &uTicks, &pTicks, &rCPU, &uRSS, &pRSS, &uCache, &pCache, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
+		rows.Scan(&id, &JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
 		fmt.Println(strconv.Itoa(id)+": ", JobID,
-			"\n   ", uCache,
-			"\n   ", pCache)
+			"\n   ", uTicks,
+			"\n   ", rCPU,
+			"\n   ", uRSS,
+			"\n   ", rMemoryMB)
 	}
 }
