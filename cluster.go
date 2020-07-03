@@ -14,7 +14,7 @@ type JobData struct {
 	JobID       string
 	name        string
 	uTicks      float64
-	pTicks		float64
+	pTicks      float64
 	rCPU        float64
 	uRSS        float64
 	pRSS        float64
@@ -45,14 +45,37 @@ type MetricType struct {
 	Alloc_id string
 }
 
+type NomadAlloc struct {
+	ResourceUsage MemCPU
+}
+
+type MemCPU struct {
+	MemoryStats Memory
+	CpuStats    CPU
+}
+
+type Memory struct {
+	RSS            float64
+	Cache          float64
+	Swap           float64
+	Usage          float64
+	MaxUsage       float64
+	KernelUsage    float64
+	KernelMaxUsage float64
+}
+
+type CPU struct {
+	TotalTicks float64
+}
+
 func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct{} {
 	api := "http://" + clusterAddress + "/api/v1/query?query=" + query //nomad_client_allocs_memory_rss_value
-	response, err := http.Get(api) // customize for timeout
+	response, err := http.Get(api)                                     // customize for timeout
 	if err != nil {
 		e <- err
 	}
 
-	var allocs RawAlloc 
+	var allocs RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&allocs)
 	if err != nil {
 		e <- err
@@ -88,26 +111,59 @@ func getNomadAllocs(clusterAddress, jobID string) map[string]string {
 	return m
 }
 
+func getRSS(clusterAddress, metricsAddress, jobID, name string, e chan error) float64 {
+	var rss float64
+
+	// Sum RSS stats from Prometheus
+	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
+	response, err := http.Get(api)
+	if err != nil {
+		e <- err
+	}
+	var promStats RawAlloc
+	json.NewDecoder(response.Body).Decode(&promStats)
+	if len(promStats.Data.Result) != 0 {
+		num, _ := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+		rss += num / 1.049e6
+	}
+
+	// Get remaining data from Nomad
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_rss_value", e)
+	for allocID := range nomadAllocs {
+		if _, ok := promAllocs[allocID]; !ok {
+			api := "http://" + clusterAddress + "/v1/client/allocation/" + allocID + "/stats"
+			response, err := http.Get(api)
+			if err != nil {
+				e <- err
+			}
+			var nomadAlloc NomadAlloc
+			json.NewDecoder(response.Body).Decode(&nomadAlloc)
+			fmt.Println("nomadAlloc.ResourceUsage:", nomadAlloc.ResourceUsage)
+			if nomadAlloc.ResourceUsage != (MemCPU{}) {
+				resourceUsage := nomadAlloc.ResourceUsage 
+				memoryStats := resourceUsage.MemoryStats 
+				rss += memoryStats.RSS / 1.049e6 
+			}
+		}
+	}
+
+	return rss
+}
+
 // Aggregate total CPU, memory usage for a job
 func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64, float64) {
 	var ticksTotal, rssTotal, cacheTotal, swapTotal, usageTotal, maxUsageTotal, kernelUsageTotal, kernelMaxUsageTotal, rssProm, ticksProm float64
-	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_rss_value", e)
+
+	rssProm = getRSS(clusterAddress, metricsAddress, jobID, name, e)
+
 	api := "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
 	response, err := http.Get(api)
-	// errHttp = errors.New("HTTP ERROR - aggUsageResources(address, jobID, e)")
 	if err != nil {
 		e <- err
 	}
-
-	data, err := ioutil.ReadAll(response.Body)
-	// errIoutil = errors.New("IOUTIL ERROR - aggUsageResources(address, jobID, e)")
-	if err != nil {
-		e <- err
-	}
-
 	allocs := make([]interface{}, 0)
-	json.Unmarshal([]byte(string(data)), &allocs)
-
+	json.NewDecoder(response.Body).Decode(&allocs)
 	for i := range allocs {
 		allocID := allocs[i].(map[string]interface{})["ID"].(string)
 		clientStatus := allocs[i].(map[string]interface{})["ClientStatus"].(string)
@@ -144,41 +200,6 @@ func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e cha
 		}
 	}
 
-	// NEW DATA SOURCE
-	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
-	for allocID := range nomadAllocs {
-		if _, ok := promAllocs[allocID]; !ok { // if key is not in promAllocs with specified query, get from nomad
-			clientAllocAPI := "http://" + clusterAddress + "/v1/client/allocation/" + allocID + "/stats"
-			response, err := http.Get(clientAllocAPI)
-			if err != nil {
-				e <- err
-			}
-			// allocData, _ := ioutil.ReadAll(allocResponse.Body)
-			var allocStats map[string]interface{}
-			// json.Unmarshal([]byte(string(allocData)), &allocStats)
-			json.NewDecoder(response.Body).Decode(&allocStats)
-
-			if allocStats["ResourceUsage"] != nil {
-				resourceUsage := allocStats["ResourceUsage"].(map[string]interface{})
-				memoryStats := resourceUsage["MemoryStats"].(map[string]interface{})
-				cpuStats := resourceUsage["CpuStats"].(map[string]interface{})
-				rssProm += memoryStats["RSS"].(float64) / 1.049e6
-				ticksProm += cpuStats["TotalTicks"].(float64)
-			}
-
-		}
-	}
-	// Here: sum remaining RSS stats from prom
-	promAPI := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
-	promResponse, _ := http.Get(promAPI)
-	promData, _ := ioutil.ReadAll(promResponse.Body)
-	var promStats map[string]interface{}
-	json.Unmarshal([]byte(string(promData)), &promStats)
-	if len(promStats["data"].(map[string]interface{})["result"].([]interface{})) != 0 {
-		num, _ := strconv.ParseFloat(promStats["data"].(map[string]interface{})["result"].([]interface{})[0].(map[string]interface{})["value"].([]interface{})[1].(string), 64)
-		rssProm += num / 1.049e6
-	}
-
 	// fmt.Println("here")
 	// promAPI = "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
 	// promResponse, _ = http.Get(promAPI)
@@ -187,11 +208,9 @@ func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e cha
 	// json.Unmarshal([]byte(string(promData)), &promStats2)
 	// if len(promStats2["data"].(map[string]interface{})["result"].([]interface{})) != 0 {
 	// 	num, _ := strconv.ParseFloat(promStats["data"].(map[string]interface{})["result"].([]interface{})[0].(map[string]interface{})["value"].([]interface{})[1].(string), 64)
-	// 	ticksProm += num 
+	// 	ticksProm += num
 	// }
 	// ticksProm = 999
-
-
 
 	return ticksTotal, rssTotal, rssProm, ticksProm
 }
