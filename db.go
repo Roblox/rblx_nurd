@@ -18,6 +18,7 @@ func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
 
 	createTable, err := db.Prepare(`CREATE TABLE IF NOT EXISTS resources (id INTEGER PRIMARY KEY,
 		JobID TEXT,
+		name TEXT,
 		uTicks REAL,
 		pTicks REAL,
 		rCPU REAL, 
@@ -36,6 +37,7 @@ func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
 	}
 
 	insert, err := db.Prepare(`INSERT INTO resources (JobID,
+		name,
 		uTicks,
 		pTicks, 
 		rCPU,
@@ -46,7 +48,7 @@ func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
 		rIOPS,
 		namespace,
 		dataCenters,
-		date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 
 	if err != nil {
 		log.Fatal("Error:", err)
@@ -62,16 +64,15 @@ func printRowsDB(db *sql.DB) {
 		log.Fatal("Error:", err)
 	}
 
-	var JobID, namespace, dataCenters, currentTime string
+	var JobID, name, namespace, dataCenters, currentTime string
 	var uTicks, rCPU, uRSS, rMemoryMB, rdiskMB, rIOPS, pRSS, pTicks float64
 	var id int
 
 	for rows.Next() {
-		rows.Scan(&id, &JobID, &uTicks, &pTicks, &rCPU, &uRSS, &pRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
+		rows.Scan(&id, &JobID, &name, &uTicks, &pTicks, &rCPU, &uRSS, &pRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
 		fmt.Println(strconv.Itoa(id)+": ", JobID,
-			"\n   ", rCPU,
-			"\n   ", rMemoryMB,
-			"\n   ", rdiskMB,
-			"\n   ", rIOPS)
+			"\n   ", name,
+			"\n   ", namespace,
+			"\n   ", dataCenters)
 	}
 }

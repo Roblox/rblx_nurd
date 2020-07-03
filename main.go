@@ -39,6 +39,7 @@ func main() {
 		for jobDataSlice := range c {
 			for _, v := range jobDataSlice {
 				insert.Exec(v.JobID,
+					v.name,
 					v.uTicks,
 					v.pTicks,
 					v.rCPU,

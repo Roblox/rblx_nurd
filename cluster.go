@@ -73,8 +73,8 @@ type JobSpec struct {
 }
 
 type TaskGroup struct {
-	Count float64
-	Tasks []Task
+	Count         float64
+	Tasks         []Task
 	EphemeralDisk Disk
 }
 
@@ -90,6 +90,17 @@ type Resource struct {
 	CPU      float64
 	MemoryMB float64
 	IOPS     float64
+}
+
+type JobDesc struct {
+	ID          string
+	Name        string
+	Datacenters []string
+	JobSummary  JobSum
+}
+
+type JobSum struct {
+	Namespace string
 }
 
 func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct{} {
@@ -178,8 +189,10 @@ func getRSS(clusterAddress, metricsAddress, jobID, name string, e chan error) fl
 func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64, float64) {
 	var ticksTotal, rssTotal, cacheTotal, swapTotal, usageTotal, maxUsageTotal, kernelUsageTotal, kernelMaxUsageTotal, rssProm, ticksProm float64
 
+	// NEW
 	rssProm = getRSS(clusterAddress, metricsAddress, jobID, name, e)
 
+	// OLD
 	api := "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
 	response, err := http.Get(api)
 	if err != nil {
@@ -246,7 +259,6 @@ func aggReqResources(clusterAddress, jobID string, e chan error) (float64, float
 		count := taskGroup.Count
 		tasks := taskGroup.Tasks
 		ephemeralDisk := taskGroup.EphemeralDisk.SizeMB
-
 		for _, task := range tasks {
 			resources := task.Resources
 			CPUTotal += count * resources.CPU
@@ -261,29 +273,28 @@ func aggReqResources(clusterAddress, jobID string, e chan error) (float64, float
 
 // Access a single cluster
 func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e chan error) {
+	var jobsClean []JobData
+
 	api := "http://" + clusterAddress + "/v1/jobs"
 	response, err := http.Get(api)
-	// errHttp = errors.New("HTTP ERROR - reachCluster(address, c, e)")
 	if err != nil {
 		e <- err
 	}
+	var jobs []JobDesc
+	json.NewDecoder(response.Body).Decode(&jobs)
 
-	jobsRaw := make([]interface{}, 0)
-	json.NewDecoder(response.Body).Decode(&jobsRaw)
-	var jobsClean []JobData
-
-	for i := range jobsRaw {
-		jobID := jobsRaw[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"].(string) // unpack JobID from JSON
-		name := jobsRaw[i].(map[string]interface{})["Name"].(string)
+	for i := range jobs {
+		jobID := jobs[i].ID //(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"].(string) // unpack JobID from JSON
+		name := jobs[i].Name // .(map[string]interface{})["Name"].(string)
+		dataCentersSlice := jobs[i].Datacenters // .(map[string]interface{})["Datacenters"].([]interface{})
+		namespace := jobs[i].JobSummary.Namespace // .(map[string]interface{})["JobSummary"].(map[string]interface{})["Namespace"].(string)
 		ticksUsage, rssUsage, rssProm, ticksProm := aggUsageResources(clusterAddress, metricsAddress, jobID, name, e)
 		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(clusterAddress, jobID, e)
-		namespace := jobsRaw[i].(map[string]interface{})["JobSummary"].(map[string]interface{})["Namespace"].(string)
-		dataCentersSlice := jobsRaw[i].(map[string]interface{})["Datacenters"].([]interface{})
 
 		var dataCenters string
 
 		for i, v := range dataCentersSlice {
-			dataCenters += v.(string)
+			dataCenters += v
 			if i != len(dataCentersSlice)-1 {
 				dataCenters += " "
 			}
