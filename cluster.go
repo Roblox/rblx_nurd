@@ -68,6 +68,26 @@ type CPU struct {
 	TotalTicks float64
 }
 
+type JobSpec struct {
+	TaskGroups []TaskGroup
+}
+
+type TaskGroup struct {
+	Count float64
+	Tasks []Task
+}
+
+type Task struct {
+	Resources Resource
+}
+
+type Resource struct {
+	CPU      float64
+	MemoryMB float64
+	DiskMB   float64
+	IOPS     float64
+}
+
 func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct{} {
 	api := "http://" + clusterAddress + "/api/v1/query?query=" + query //nomad_client_allocs_memory_rss_value
 	response, err := http.Get(api)                                     // customize for timeout
@@ -139,11 +159,10 @@ func getRSS(clusterAddress, metricsAddress, jobID, name string, e chan error) fl
 			}
 			var nomadAlloc NomadAlloc
 			json.NewDecoder(response.Body).Decode(&nomadAlloc)
-			fmt.Println("nomadAlloc.ResourceUsage:", nomadAlloc.ResourceUsage)
 			if nomadAlloc.ResourceUsage != (MemCPU{}) {
-				resourceUsage := nomadAlloc.ResourceUsage 
-				memoryStats := resourceUsage.MemoryStats 
-				rss += memoryStats.RSS / 1.049e6 
+				resourceUsage := nomadAlloc.ResourceUsage
+				memoryStats := resourceUsage.MemoryStats
+				rss += memoryStats.RSS / 1.049e6
 			}
 		}
 	}
@@ -200,18 +219,6 @@ func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e cha
 		}
 	}
 
-	// fmt.Println("here")
-	// promAPI = "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
-	// promResponse, _ = http.Get(promAPI)
-	// promData, _ = ioutil.ReadAll(promResponse.Body)
-	// var promStats2 map[string]interface{}
-	// json.Unmarshal([]byte(string(promData)), &promStats2)
-	// if len(promStats2["data"].(map[string]interface{})["result"].([]interface{})) != 0 {
-	// 	num, _ := strconv.ParseFloat(promStats["data"].(map[string]interface{})["result"].([]interface{})[0].(map[string]interface{})["value"].([]interface{})[1].(string), 64)
-	// 	ticksProm += num
-	// }
-	// ticksProm = 999
-
 	return ticksTotal, rssTotal, rssProm, ticksProm
 }
 
@@ -221,30 +228,26 @@ func aggReqResources(clusterAddress, jobID string, e chan error) (float64, float
 
 	api := "http://" + clusterAddress + "/v1/job/" + jobID
 	response, err := http.Get(api)
-	// errHttp = errors.New("HTTP ERROR - aggReqResources(address, jobID, e)")
 	if err != nil {
 		e <- err
 	}
-
-	var jobSpec map[string]interface{}
+	var jobSpec JobSpec
 	json.NewDecoder(response.Body).Decode(&jobSpec)
-
-	if jobSpec["TaskGroups"] == nil {
+	if jobSpec.TaskGroups == nil {
 		fmt.Println("TASKGROUPS NIL\nJOB:", jobID)
 		return 0, 0, 0, 0
 	}
-
-	taskGroups := jobSpec["TaskGroups"].([]interface{})
+	taskGroups := jobSpec.TaskGroups
 	for _, taskGroup := range taskGroups {
-		count := taskGroup.(map[string]interface{})["Count"].(float64)
-		tasks := taskGroup.(map[string]interface{})["Tasks"].([]interface{})
+		count := taskGroup.Count
+		tasks := taskGroup.Tasks
 
 		for _, task := range tasks {
-			resources := task.(map[string]interface{})["Resources"].(map[string]interface{})
-			CPUTotal += count * resources["CPU"].(float64)
-			memoryMBTotal += count * resources["MemoryMB"].(float64)
-			diskMBTotal += count * resources["DiskMB"].(float64)
-			IOPSTotal += count * resources["IOPS"].(float64)
+			resources := task.Resources
+			CPUTotal += count * resources.CPU
+			memoryMBTotal += count * resources.MemoryMB
+			diskMBTotal += count * resources.DiskMB
+			IOPSTotal += count * resources.IOPS
 		}
 	}
 

@@ -68,6 +68,10 @@ func printRowsDB(db *sql.DB) {
 
 	for rows.Next() {
 		rows.Scan(&id, &JobID, &uTicks, &pTicks, &rCPU, &uRSS, &pRSS, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
-		fmt.Println(strconv.Itoa(id)+": ", JobID, "\n   ", uRSS, "\n   ", pRSS)
+		fmt.Println(strconv.Itoa(id)+": ", JobID,
+			"\n   ", rCPU,
+			"\n   ", rMemoryMB,
+			"\n   ", rdiskMB,
+			"\n   ", rIOPS)
 	}
 }
