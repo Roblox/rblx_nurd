@@ -75,16 +75,20 @@ type JobSpec struct {
 type TaskGroup struct {
 	Count float64
 	Tasks []Task
+	EphemeralDisk Disk
 }
 
 type Task struct {
 	Resources Resource
 }
 
+type Disk struct {
+	SizeMB float64
+}
+
 type Resource struct {
 	CPU      float64
 	MemoryMB float64
-	DiskMB   float64
 	IOPS     float64
 }
 
@@ -241,14 +245,15 @@ func aggReqResources(clusterAddress, jobID string, e chan error) (float64, float
 	for _, taskGroup := range taskGroups {
 		count := taskGroup.Count
 		tasks := taskGroup.Tasks
+		ephemeralDisk := taskGroup.EphemeralDisk.SizeMB
 
 		for _, task := range tasks {
 			resources := task.Resources
 			CPUTotal += count * resources.CPU
 			memoryMBTotal += count * resources.MemoryMB
-			diskMBTotal += count * resources.DiskMB
 			IOPSTotal += count * resources.IOPS
 		}
+		diskMBTotal += count * ephemeralDisk
 	}
 
 	return CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal
