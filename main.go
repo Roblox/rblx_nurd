@@ -6,6 +6,8 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+
+	"fmt"
 )
 
 var wg sync.WaitGroup
@@ -45,6 +47,8 @@ func main() {
 					v.rCPU,
 					v.uRSS,
 					v.pRSS,
+					v.uCache,
+					v.pCache,
 					v.rMemoryMB,
 					v.rdiskMB,
 					v.rIOPS,
@@ -55,6 +59,7 @@ func main() {
 		}
 
 		printRowsDB(db)
+		fmt.Println("done")
 		time.Sleep(duration)
 	}
 }

@@ -18,6 +18,8 @@ type JobData struct {
 	rCPU        float64
 	uRSS        float64
 	pRSS        float64
+	uCache float64
+	pCache float64
 	rMemoryMB   float64
 	rdiskMB     float64
 	rIOPS       float64
@@ -185,12 +187,52 @@ func getRSS(clusterAddress, metricsAddress, jobID, name string, e chan error) fl
 	return rss
 }
 
-// Aggregate total CPU, memory usage for a job
-func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64, float64) {
-	var ticksTotal, rssTotal, cacheTotal, swapTotal, usageTotal, maxUsageTotal, kernelUsageTotal, kernelMaxUsageTotal, rssProm, ticksProm float64
+func getCache(clusterAddress, metricsAddress, jobID, name string, e chan error) float64 {
+	var cache float64
+
+	// Sum RSS stats from Prometheus
+	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
+	response, err := http.Get(api)
+	if err != nil {
+		e <- err
+	}
+	var promStats RawAlloc
+	json.NewDecoder(response.Body).Decode(&promStats)
+	if len(promStats.Data.Result) != 0 {
+		num, _ := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+		cache += num / 1.049e6
+	}
+
+	// Get remaining data from Nomad
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_cache_value", e)
+	for allocID := range nomadAllocs {
+		if _, ok := promAllocs[allocID]; !ok {
+			api := "http://" + clusterAddress + "/v1/client/allocation/" + allocID + "/stats"
+			response, err := http.Get(api)
+			if err != nil {
+				e <- err
+			}
+			var nomadAlloc NomadAlloc
+			json.NewDecoder(response.Body).Decode(&nomadAlloc)
+			if nomadAlloc.ResourceUsage != (MemCPU{}) {
+				resourceUsage := nomadAlloc.ResourceUsage
+				memoryStats := resourceUsage.MemoryStats
+				cache += memoryStats.Cache / 1.049e6
+			}
+		}
+	}
+
+	return cache
+}
+
+func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64, float64, float64, float64) {
+	var ticksTotal, rssTotal, cacheTotal, cacheProm, swapTotal, usageTotal, maxUsageTotal, kernelUsageTotal, kernelMaxUsageTotal, rssProm, ticksProm float64
 
 	// NEW
+	// consider using goroutines here also bc takes a while
 	rssProm = getRSS(clusterAddress, metricsAddress, jobID, name, e)
+	cacheProm = getCache(clusterAddress, metricsAddress, jobID, name, e)
 
 	// OLD
 	api := "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
@@ -236,10 +278,9 @@ func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e cha
 		}
 	}
 
-	return ticksTotal, rssTotal, rssProm, ticksProm
+	return ticksTotal, rssTotal, rssProm, ticksProm, cacheTotal, cacheProm
 }
 
-// Aggregate resources requested by a job
 func aggReqResources(clusterAddress, jobID string, e chan error) (float64, float64, float64, float64) {
 	var CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal float64
 
@@ -271,7 +312,6 @@ func aggReqResources(clusterAddress, jobID string, e chan error) (float64, float
 	return CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal
 }
 
-// Access a single cluster
 func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e chan error) {
 	var jobsClean []JobData
 
@@ -284,15 +324,14 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 	json.NewDecoder(response.Body).Decode(&jobs)
 
 	for i := range jobs {
-		jobID := jobs[i].ID //(map[string]interface{})["JobSummary"].(map[string]interface{})["JobID"].(string) // unpack JobID from JSON
-		name := jobs[i].Name // .(map[string]interface{})["Name"].(string)
-		dataCentersSlice := jobs[i].Datacenters // .(map[string]interface{})["Datacenters"].([]interface{})
-		namespace := jobs[i].JobSummary.Namespace // .(map[string]interface{})["JobSummary"].(map[string]interface{})["Namespace"].(string)
-		ticksUsage, rssUsage, rssProm, ticksProm := aggUsageResources(clusterAddress, metricsAddress, jobID, name, e)
+		jobID := jobs[i].ID 
+		name := jobs[i].Name 
+		dataCentersSlice := jobs[i].Datacenters 
+		namespace := jobs[i].JobSummary.Namespace
+		ticksUsage, rssUsage, rssProm, ticksProm, cacheUsage, cacheProm := aggUsageResources(clusterAddress, metricsAddress, jobID, name, e)
 		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(clusterAddress, jobID, e)
 
 		var dataCenters string
-
 		for i, v := range dataCentersSlice {
 			dataCenters += v
 			if i != len(dataCentersSlice)-1 {
@@ -309,6 +348,8 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 			CPUTotal,
 			rssUsage,
 			rssProm,
+			cacheUsage,
+			cacheProm,
 			memoryMBTotal,
 			diskMBTotal,
 			IOPSTotal,
