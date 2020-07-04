@@ -13,9 +13,9 @@ import (
 var wg sync.WaitGroup
 
 func main() {
-	addresses, metricsAddress, buffer, duration := Config()
+	addresses, metricsAddress, buffer, duration := Config("config.txt")
 
-	db, insert := initDB("resources")
+	db, insert := initDB()
 
 	// While loop for scrape frequency
 	for {
@@ -25,7 +25,7 @@ func main() {
 		// Listen for errors
 		go func(e chan error) {
 			err := <-e
-			log.Fatal("Error: ", err)
+			log.Fatal(err)
 		}(e)
 
 		// Goroutines for each cluster address

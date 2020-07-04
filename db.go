@@ -7,13 +7,11 @@ import (
 	"strconv"
 )
 
-// Initialize database
-// Configure insert SQL statement
-func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
-	db, err := sql.Open("sqlite3", nameDB+".out")
+func initDB() (*sql.DB, *sql.Stmt) {
+	db, err := sql.Open("sqlite3", "resources.out")
 
 	if err != nil {
-		log.Fatal("Error:", err)
+		log.Fatal(err)
 	}
 
 	createTable, err := db.Prepare(`CREATE TABLE IF NOT EXISTS resources (id INTEGER PRIMARY KEY,
@@ -32,7 +30,7 @@ func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
 	createTable.Exec()
 
 	if err != nil {
-		log.Fatal("Error:", err)
+		log.Fatal(err)
 	}
 
 	insert, err := db.Prepare(`INSERT INTO resources (JobID,
@@ -49,7 +47,7 @@ func initDB(nameDB string) (*sql.DB, *sql.Stmt) {
 		date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 
 	if err != nil {
-		log.Fatal("Error:", err)
+		log.Fatal(err)
 	}
 
 	return db, insert
@@ -59,7 +57,7 @@ func printRowsDB(db *sql.DB) {
 	rows, err := db.Query("SELECT * FROM resources")
 
 	if err != nil {
-		log.Fatal("Error:", err)
+		log.Fatal(err)
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime string
