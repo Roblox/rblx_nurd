@@ -3,12 +3,12 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 
 ## Prerequisites
 * At least one active Nomad server
-* **Recommended** A VictoriaMetrics server containing allocation level resource statistics
+* **Recommended:** A VictoriaMetrics server containing allocation level resource statistics
 
 ## Setup
 1. **Configuration File**<br>
     a. **nurd/config.json**<br>
-        This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server.
+        This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. Note, any amount of servers can be added to the `Nomad` array.
 
         ```
         {
@@ -17,10 +17,6 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
                 "Port":     Port for VictoriaMetrics server
             },
             "Nomad": [
-                {
-                    "URL":      URL for Nomad server
-                    "Port":     Port for Nomad server
-                },
                 {
                     "URL":      URL for Nomad server
                     "Port":     Port for Nomad server
