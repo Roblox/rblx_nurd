@@ -9,7 +9,7 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 1. **Configuration File**<br>
     a. **nurd/config.json**<br>
         This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. Note, any amount of servers can be added to the `Nomad` array.
-        ```
+
         {
             "VictoriaMetrics": {
                 "URL":      URL for VictoriaMetrics server 
@@ -22,4 +22,3 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
                 }
             ]
         }
-        ```
