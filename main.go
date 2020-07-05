@@ -13,8 +13,7 @@ import (
 var wg sync.WaitGroup
 
 func main() {
-	addresses, metricsAddress, buffer, duration := Config("config.txt")
-
+	addresses, metricsAddress, buffer, duration := Config("config.json")
 	db, insert := initDB()
 
 	// While loop for scrape frequency

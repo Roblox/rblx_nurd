@@ -1,11 +1,22 @@
 package main
 
 import (
-	"bufio"
+	"encoding/json"
+	"io/ioutil"
 	"log"
 	"os"
 	"time"
 )
+
+type ConfigFile struct {
+	VictoriaMetrics Server
+	Nomad           []Server
+}
+
+type Server struct {
+	URL  string
+	Port string
+}
 
 func Config(path string) ([]string, string, int, time.Duration) {
 	file, err := os.Open(path)
@@ -14,20 +25,26 @@ func Config(path string) ([]string, string, int, time.Duration) {
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	scanner.Scan()
-	metricsAddress := scanner.Text()
+	byte, err := ioutil.ReadAll(file)
+	var config ConfigFile
+	err = json.Unmarshal(byte, &config)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	addresses := make([]string, 0)
-    for scanner.Scan() {
-        addresses = append(addresses, scanner.Text())
-    }
+	metricsAddress := config.VictoriaMetrics.URL + ":" + config.VictoriaMetrics.Port
+	nomadAddresses := make([]string, 0)
 
-	buffer := len(addresses)
+	nomad := config.Nomad
+	for _, server := range nomad {
+		nomadAddresses = append(nomadAddresses, server.URL+":"+server.Port)
+	}
+
+	buffer := len(nomadAddresses)
 	duration, err := time.ParseDuration("1m")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return addresses, metricsAddress, buffer, duration
+	return nomadAddresses, metricsAddress, buffer, duration
 }
