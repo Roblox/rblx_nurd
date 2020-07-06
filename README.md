@@ -12,12 +12,12 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 
         {
             "VictoriaMetrics": {
-                "URL":      URL for VictoriaMetrics server 
+                "URL":      URL for VictoriaMetrics server, 
                 "Port":     Port for VictoriaMetrics server
             },
             "Nomad": [
                 {
-                    "URL":      URL for Nomad server
+                    "URL":      URL for Nomad server, 
                     "Port":     Port for Nomad server
                 }
             ]
