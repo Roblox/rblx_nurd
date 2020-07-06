@@ -13,7 +13,6 @@ import (
 
 var wg2 sync.WaitGroup
 
-
 type JobData struct {
 	JobID       string
 	Name        string
@@ -27,6 +26,22 @@ type JobData struct {
 	Namespace   string
 	DataCenters string
 	CurrentTime string
+}
+
+type JobDataDB struct {
+	JobID       string
+	Name        string
+	UTicks      float64
+	RCPU        float64
+	URSS        float64
+	UCache 		float64
+	RMemoryMB   float64
+	RdiskMB     float64
+	RIOPS       float64
+	Namespace   string
+	DataCenters string
+	CurrentTime string
+	InsertTime  string
 }
 
 type RawAlloc struct {
@@ -151,7 +166,6 @@ func getNomadAllocs(clusterAddress, jobID string) map[string]string {
 
 func getRSS(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
 	var rss float64
-	fmt.Println("getRSS")
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
@@ -178,7 +192,6 @@ func getRSS(clusterAddress, metricsAddress, jobID, name string, remainders map[s
 
 func getCache(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
 	var cache float64
-	fmt.Println("getCache")
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
@@ -205,7 +218,6 @@ func getCache(clusterAddress, metricsAddress, jobID, name string, remainders map
 
 func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
 	var ticks float64
-	fmt.Println("getTicks")
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
@@ -337,6 +349,7 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 	json.NewDecoder(response.Body).Decode(&jobs)
 
 	for i := range jobs {
+		fmt.Println("Getting job", i, "resources...")
 		jobID := jobs[i].ID 
 		name := jobs[i].Name 
 		dataCentersSlice := jobs[i].Datacenters 

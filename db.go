@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func initDB() (*sql.DB, *sql.Stmt) {
@@ -72,19 +74,19 @@ func printRowsDB(db *sql.DB) {
 	}
 }
 
-func getAllRowsDB(db *sql.DB) ([]JobData) {
+func getAllRowsDB(db *sql.DB) ([]JobDataDB) {
 	rows, err := db.Query("SELECT * FROM resources")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	all := make([]JobData, 0)
+	all := make([]JobDataDB, 0)
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
 	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
 	var id int
 	for rows.Next() {
 		rows.Scan(&id, &JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime, &insertTime)
-		all = append(all, JobData{
+		all = append(all, JobDataDB{
 			JobID,
 			name,
 			uTicks,
@@ -97,7 +99,7 @@ func getAllRowsDB(db *sql.DB) ([]JobData) {
 			namespace,
 			dataCenters,
 			currentTime,
-		})
+			insertTime})
 	}
 
 	return all

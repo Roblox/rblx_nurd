@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
-
 	"fmt"
 )
 
@@ -61,8 +59,8 @@ func collectData() {
 		end := time.Now()
 
 		// Insert into db from channel
+		insertTime := time.Now().Format("2006-01-02 15:04:05")
 		for jobDataSlice := range c {
-			insertTime := time.Now().Format("2006-01-02 15:04:05")
 			for _, v := range jobDataSlice {
 				insert.Exec(v.JobID,
 					v.Name,
