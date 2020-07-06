@@ -16,17 +16,17 @@ var wg2 sync.WaitGroup
 
 type JobData struct {
 	JobID       string
-	name        string
-	uTicks      float64
-	rCPU        float64
-	uRSS        float64
-	uCache 		float64
-	rMemoryMB   float64
-	rdiskMB     float64
-	rIOPS       float64
-	namespace   string
-	dataCenters string
-	currentTime string
+	Name        string
+	UTicks      float64
+	RCPU        float64
+	URSS        float64
+	UCache 		float64
+	RMemoryMB   float64
+	RdiskMB     float64
+	RIOPS       float64
+	Namespace   string
+	DataCenters string
+	CurrentTime string
 }
 
 type RawAlloc struct {
@@ -151,7 +151,7 @@ func getNomadAllocs(clusterAddress, jobID string) map[string]string {
 
 func getRSS(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
 	var rss float64
-
+	fmt.Println("getRSS")
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
@@ -178,7 +178,7 @@ func getRSS(clusterAddress, metricsAddress, jobID, name string, remainders map[s
 
 func getCache(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
 	var cache float64
-
+	fmt.Println("getCache")
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
@@ -205,7 +205,7 @@ func getCache(clusterAddress, metricsAddress, jobID, name string, remainders map
 
 func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
 	var ticks float64
-
+	fmt.Println("getTicks")
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {

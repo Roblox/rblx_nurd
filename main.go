@@ -1,7 +1,10 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
@@ -11,10 +14,27 @@ import (
 )
 
 var wg sync.WaitGroup
+var db *sql.DB
+var insert *sql.Stmt
 
-func main() {
+func homePage(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Welcome to NURD.")
+}
+
+func returnAll(w http.ResponseWriter, r *http.Request) {
+	all := getAllRowsDB(db)
+	json.NewEncoder(w).Encode(all)
+}
+
+func handleRequests() {
+	http.HandleFunc("/nurd", homePage)
+	http.HandleFunc("/nurd/all", returnAll)
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func collectData() {
 	addresses, metricsAddress, buffer, duration := Config("config.json")
-	db, insert := initDB()
+	db, insert = initDB()
 
 	// While loop for scrape frequency
 	for {
@@ -27,6 +47,8 @@ func main() {
 			log.Fatal(err)
 		}(e)
 
+		begin := time.Now()
+
 		// Goroutines for each cluster address
 		for _, address := range addresses {
 			wg.Add(1)
@@ -36,26 +58,35 @@ func main() {
 		wg.Wait()
 		close(c)
 
+		end := time.Now()
+
 		// Insert into db from channel
 		for jobDataSlice := range c {
+			insertTime := time.Now().Format("2006-01-02 15:04:05")
 			for _, v := range jobDataSlice {
 				insert.Exec(v.JobID,
-					v.name,
-					v.uTicks,
-					v.rCPU,
-					v.uRSS,
-					v.uCache,
-					v.rMemoryMB,
-					v.rdiskMB,
-					v.rIOPS,
-					v.namespace,
-					v.dataCenters,
-					v.currentTime)
+					v.Name,
+					v.UTicks,
+					v.RCPU,
+					v.URSS,
+					v.UCache,
+					v.RMemoryMB,
+					v.RdiskMB,
+					v.RIOPS,
+					v.Namespace,
+					v.DataCenters,
+					v.CurrentTime,
+					insertTime)
 			}
 		}
 
 		printRowsDB(db)
-		fmt.Println("done")
+		fmt.Println("done\nElapsed:", end.Sub(begin))
 		time.Sleep(duration)
 	}
+}
+
+func main() {
+	go collectData()
+	handleRequests()
 }

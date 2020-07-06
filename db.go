@@ -9,7 +9,6 @@ import (
 
 func initDB() (*sql.DB, *sql.Stmt) {
 	db, err := sql.Open("sqlite3", "resources.out")
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -26,12 +25,12 @@ func initDB() (*sql.DB, *sql.Stmt) {
 		rIOPS REAL,
 		namespace TEXT,
 		dataCenters TEXT,
-		date DATETIME)`)
-	createTable.Exec()
-
+		date DATETIME,
+		insertTime DATETIME)`)
 	if err != nil {
 		log.Fatal(err)
 	}
+	createTable.Exec()
 
 	insert, err := db.Prepare(`INSERT INTO resources (JobID,
 		name,
@@ -44,8 +43,8 @@ func initDB() (*sql.DB, *sql.Stmt) {
 		rIOPS,
 		namespace,
 		dataCenters,
-		date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-
+		date,
+		insertTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,21 +54,51 @@ func initDB() (*sql.DB, *sql.Stmt) {
 
 func printRowsDB(db *sql.DB) {
 	rows, err := db.Query("SELECT * FROM resources")
-
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var JobID, name, namespace, dataCenters, currentTime string
+	var JobID, name, namespace, dataCenters, currentTime, insertTime string
 	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
 	var id int
 
 	for rows.Next() {
-		rows.Scan(&id, &JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime)
+		rows.Scan(&id, &JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime, &insertTime)
 		fmt.Println(strconv.Itoa(id)+": ", JobID,
 			"\n   ", uTicks,
 			"\n   ", rCPU,
 			"\n   ", uRSS,
 			"\n   ", rMemoryMB)
 	}
+}
+
+func getAllRowsDB(db *sql.DB) ([]JobData) {
+	rows, err := db.Query("SELECT * FROM resources")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	all := make([]JobData, 0)
+	var JobID, name, namespace, dataCenters, currentTime, insertTime string
+	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
+	var id int
+	for rows.Next() {
+		rows.Scan(&id, &JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime, &insertTime)
+		all = append(all, JobData{
+			JobID,
+			name,
+			uTicks,
+			rCPU,
+			uRSS,
+			uCache,
+			rMemoryMB,
+			rdiskMB,
+			rIOPS,
+			namespace,
+			dataCenters,
+			currentTime,
+		})
+	}
+
+	return all
 }
