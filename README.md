@@ -44,3 +44,22 @@ Lists all job data in NURD.<br>
 Lists the latest recorded job data for the specified job_id.<br>
     a. Sample Request<br>
     `http://localhost:8080/nurd/job/sample_job_id`
+    b. Sample Response
+    
+    [
+        {
+            "JobID":"sample-job",
+            "Name":"sample-job",
+            "UTicks":7318.394561709347,
+            "RCPU":1500,
+            "URSS":21.542070543374642,
+            "UCache":0.4997979027645376,
+            "RMemoryMB":768,
+            "RdiskMB":900,
+            "RIOPS":0,
+            "Namespace":"default",
+            "DataCenters":"alpha,alpha_test",
+            "CurrentTime":"",
+            "InsertTime":"2020-07-07T11:49:34Z"
+        }
+    ]
