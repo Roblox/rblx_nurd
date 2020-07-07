@@ -29,6 +29,6 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 
 ## Usage
 From `localhost:8080`, or wherever the NURD server is being hosted, the user can access several endpoints:
-1. **/nurd**
-2. **/nurd/jobs**
-3. **/nurd/job/:job_id**
+1. **`/nurd`**
+2. **`/nurd/jobs`**
+3. **`/nurd/job/:job_id`**
