@@ -32,19 +32,19 @@ From `localhost:8080`, or an alternative NURD host address, the user can access 
 
 1. **`/nurd`**<br>
 The homepage for NURD.<br>
-    a. Sample Request<br>
+    a. **Sample Request**<br>
     `http://localhost:8080/nurd`
 
 2. **`/nurd/jobs`**<br>
 Lists all job data in NURD.<br>
-    a. Sample Request<br>
+    a. **Sample Request**<br>
     `http://localhost:8080/nurd/jobs`
 
 3. **`/nurd/job/:job_id`**<br>
 Lists the latest recorded job data for the specified job_id.<br>
-    a. Sample Request<br>
+    a. *Sample Request*<br>
     `http://localhost:8080/nurd/job/sample_job_id`<br>
-    b. Sample Response
+    b. *Sample Response*
     ```
     [
         {
