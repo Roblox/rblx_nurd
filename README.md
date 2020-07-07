@@ -33,14 +33,14 @@ From `localhost:8080`, or an alternative NURD host address, the user can access 
 ### `/nurd`
 The homepage for NURD.
 #### Sample Request
-`http://localhost:8080/nurd`
+`http://localhost:8080/nurd`<br>
 
 ### `/nurd/jobs`
 Lists all job data in NURD.
 #### Sample Request
-`http://localhost:8080/nurd/jobs`
+`http://localhost:8080/nurd/jobs`<br>
 
 ### `/nurd/job/:job_id`
 Lists the latest recorded job data for the specified job_id.<br>
 #### Sample Request
-`http://localhost:8080/nurd/job/sample_job_id`
+`http://localhost:8080/nurd/job/sample_job_id`<br>
