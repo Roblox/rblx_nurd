@@ -28,22 +28,6 @@ type JobData struct {
 	CurrentTime string
 }
 
-type JobDataDB struct {
-	JobID       string
-	Name        string
-	UTicks      float64
-	RCPU        float64
-	URSS        float64
-	UCache 		float64
-	RMemoryMB   float64
-	RdiskMB     float64
-	RIOPS       float64
-	Namespace   string
-	DataCenters string
-	CurrentTime string
-	InsertTime  string
-}
-
 type RawAlloc struct {
 	Status string
 	Data   DataMap
@@ -361,7 +345,7 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 		for i, v := range dataCentersSlice {
 			dataCenters += v
 			if i != len(dataCentersSlice)-1 {
-				dataCenters += " "
+				dataCenters += ","
 			}
 		}
 

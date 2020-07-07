@@ -9,6 +9,22 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+type JobDataDB struct {
+	JobID       string
+	Name        string
+	UTicks      float64
+	RCPU        float64
+	URSS        float64
+	UCache 		float64
+	RMemoryMB   float64
+	RdiskMB     float64
+	RIOPS       float64
+	Namespace   string
+	DataCenters string
+	CurrentTime string
+	InsertTime  string
+}
+
 func initDB() (*sql.DB, *sql.Stmt) {
 	db, err := sql.Open("sqlite3", "resources.out")
 	if err != nil {
@@ -86,6 +102,39 @@ func getAllRowsDB(db *sql.DB) ([]JobDataDB) {
 	var id int
 	for rows.Next() {
 		rows.Scan(&id, &JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime, &insertTime)
+		all = append(all, JobDataDB{
+			JobID,
+			name,
+			uTicks,
+			rCPU,
+			uRSS,
+			uCache,
+			rMemoryMB,
+			rdiskMB,
+			rIOPS,
+			namespace,
+			dataCenters,
+			currentTime,
+			insertTime})
+	}
+
+	return all
+}
+
+func getLatestJobDB(db *sql.DB, jobID string) ([]JobDataDB) {
+	jobID = "'" + jobID + "'"
+	rows, err := db.Query("SELECT id, JobID, name, SUM(uTicks), SUM(rCPU), SUM(uRSS), SUM(uCache), SUM(rMemoryMB), SUM(rdiskMB), namespace, dataCenters, insertTime FROM resources WHERE insertTime IN (SELECT MAX(insertTime) FROM resources) AND JobID = " + jobID + " GROUP BY JobID")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var JobID, name, namespace, dataCenters, currentTime, insertTime string
+	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
+	var id int
+
+	all := make([]JobDataDB, 0)
+	for rows.Next() {
+		rows.Scan(&id, &JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &namespace, &dataCenters, &insertTime)
 		all = append(all, JobDataDB{
 			JobID,
 			name,

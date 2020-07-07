@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"sync"
@@ -24,10 +25,19 @@ func returnAll(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(all)
 }
 
+func returnJob(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	jobID := vars["id"]
+	all := getLatestJobDB(db, jobID)
+	json.NewEncoder(w).Encode(all)
+}
+
 func handleRequests() {
-	http.HandleFunc("/nurd", homePage)
-	http.HandleFunc("/nurd/all", returnAll)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	router := mux.NewRouter().StrictSlash(true)
+	router.HandleFunc("/nurd", homePage)
+	router.HandleFunc("/nurd/jobs", returnAll)
+	router.HandleFunc("/nurd/job/{id}", returnJob)
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
 func collectData() {
