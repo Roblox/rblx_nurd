@@ -42,7 +42,7 @@ Lists all job data in NURD.
 
 3. **`/nurd/job/:job_id`**<br>
 Lists the latest recorded job data for the specified job_id.<br>
-**Optional Parameters**
+**Optional Parameters**<br>
 `begin`: Specifies the earliest datetime from which to query.<br>
 `end`: Specifies the latest datetime from which to query.<br>
     * **Sample Request**<br>
