@@ -8,10 +8,7 @@ import (
 	"time"
 
 	"fmt"
-	"sync"
 )
-
-var wg2 sync.WaitGroup
 
 type JobData struct {
 	JobID       string
@@ -106,7 +103,7 @@ type JobSum struct {
 }
 
 func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct{} {
-	api := "http://" + clusterAddress + "/api/v1/query?query=" + query //nomad_client_allocs_memory_rss_value
+	api := "http://" + clusterAddress + "/api/v1/query?query=" + query 
 	response, err := http.Get(api)                                     // customize for timeout
 	if err != nil {
 		e <- err
@@ -170,7 +167,6 @@ func getRSS(clusterAddress, metricsAddress, jobID, name string, remainders map[s
 		}
 	}
 
-	wg2.Done()
 	return rss
 }
 
@@ -196,7 +192,6 @@ func getCache(clusterAddress, metricsAddress, jobID, name string, remainders map
 		}
 	}
 
-	wg2.Done()
 	return cache
 }
 
@@ -222,7 +217,6 @@ func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map
 		}
 	}
 
-	wg2.Done()
 	return ticks
 }
 
@@ -260,27 +254,10 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string, e 
 func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64) {
 	var rss, ticks, cache float64
 	remainders := make(map[string][]string)
-	rssChan := make(chan float64)
-	cacheChan := make(chan float64)
-	ticksChan := make(chan float64)
 
-	wg2.Add(3)
-
-	go func() {
-		rssChan <- getRSS(clusterAddress, metricsAddress, jobID, name, remainders, e)
-	}()
-	go func() {
-		cacheChan <- getCache(clusterAddress, metricsAddress, jobID, name, remainders, e)
-	}()
-	go func() {
-		ticksChan <- getTicks(clusterAddress, metricsAddress, jobID, name, remainders, e)
-	}()
-
-	wg2.Wait()
-
-	rss = <-rssChan
-	cache = <-cacheChan
-	ticks = <-ticksChan
+	rss = getRSS(clusterAddress, metricsAddress, jobID, name, remainders, e) 
+	cache = getCache(clusterAddress, metricsAddress, jobID, name, remainders, e) 
+	ticks = getTicks(clusterAddress, metricsAddress, jobID, name, remainders, e) 
 
 	rssRemainder, cacheRemainder, ticksRemainder := getRemainderNomad(clusterAddress, remainders, e)
 	rss += rssRemainder

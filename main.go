@@ -88,7 +88,7 @@ func collectData() {
 			}
 		}
 
-		printRowsDB(db)
+		// printRowsDB(db)
 		fmt.Println("done\nElapsed:", end.Sub(begin))
 		time.Sleep(duration)
 	}

@@ -12,13 +12,13 @@ import (
 type JobDataDB struct {
 	JobID       string
 	Name        string
-	UTicks      float64
-	RCPU        float64
-	URSS        float64
-	UCache 		float64
-	RMemoryMB   float64
-	RdiskMB     float64
-	RIOPS       float64
+	Ticks       float64
+	CPU         float64
+	RSS         float64
+	Cache       float64
+	MemoryMB    float64
+	diskMB      float64
+	IOPS        float64
 	Namespace   string
 	DataCenters string
 	CurrentTime string
@@ -90,7 +90,7 @@ func printRowsDB(db *sql.DB) {
 	}
 }
 
-func getAllRowsDB(db *sql.DB) ([]JobDataDB) {
+func getAllRowsDB(db *sql.DB) []JobDataDB {
 	rows, err := db.Query("SELECT * FROM resources")
 	if err != nil {
 		log.Fatal(err)
@@ -121,7 +121,7 @@ func getAllRowsDB(db *sql.DB) ([]JobDataDB) {
 	return all
 }
 
-func getLatestJobDB(db *sql.DB, jobID string) ([]JobDataDB) {
+func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
 	jobID = "'" + jobID + "'"
 	rows, err := db.Query("SELECT id, JobID, name, SUM(uTicks), SUM(rCPU), SUM(uRSS), SUM(uCache), SUM(rMemoryMB), SUM(rdiskMB), namespace, dataCenters, insertTime FROM resources WHERE insertTime IN (SELECT MAX(insertTime) FROM resources) AND JobID = " + jobID + " GROUP BY JobID")
 	if err != nil {
