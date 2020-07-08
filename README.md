@@ -41,9 +41,13 @@ Lists all job data in NURD.
     `http://localhost:8080/nurd/jobs`
 
 3. **`/nurd/job/:job_id`**<br>
-Lists the latest recorded job data for the specified job_id.
+Lists the latest recorded job data for the specified job_id.<br>
+**Optional Parameters**
+`begin`: Specifies the earliest datetime from which to query.<br>
+`end`: Specifies the latest datetime from which to query.<br>
     * **Sample Request**<br>
     `http://localhost:8080/nurd/job/sample_job_id`<br>
+    `http://localhost:8080/nurd/job/sample_job_id?begin=2020-07-07%2017:34:53&end=2020-07-08%2017:42:19`
     * **Sample Response**<br>
         ```
         [
