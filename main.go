@@ -26,10 +26,23 @@ func returnAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func returnJob(w http.ResponseWriter, r *http.Request) {
+	var all []JobDataDB
 	vars := mux.Vars(r)
 	jobID := vars["id"]
-	all := getLatestJobDB(db, jobID)
-	json.NewEncoder(w).Encode(all)
+	begin, okBegin := r.URL.Query()["begin"]
+	end, okEnd := r.URL.Query()["end"]
+
+	if !okBegin && !okEnd {
+		all = getLatestJobDB(db, jobID)
+		json.NewEncoder(w).Encode(all)
+	} else if !okBegin && okEnd {
+		fmt.Fprintf(w, "Missing query param: 'begin'")
+	} else if okBegin && !okEnd {
+		fmt.Fprintf(w, "Missing query param: 'end'")
+	} else {
+		all = getTimeSliceDB(db, jobID, begin[0], end[0])
+		json.NewEncoder(w).Encode(all)
+	}
 }
 
 func handleRequests() {
