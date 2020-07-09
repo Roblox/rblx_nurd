@@ -16,7 +16,7 @@ type JobData struct {
 	UTicks      float64
 	RCPU        float64
 	URSS        float64
-	UCache 		float64
+	UCache      float64
 	RMemoryMB   float64
 	RdiskMB     float64
 	RIOPS       float64
@@ -103,8 +103,8 @@ type JobSum struct {
 }
 
 func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct{} {
-	api := "http://" + clusterAddress + "/api/v1/query?query=" + query 
-	response, err := http.Get(api)                                     // customize for timeout
+	api := "http://" + clusterAddress + "/api/v1/query?query=" + query
+	response, err := http.Get(api) // customize for timeout
 	if err != nil {
 		e <- err
 	}
@@ -206,7 +206,7 @@ func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map
 	json.NewDecoder(response.Body).Decode(&promStats)
 	if len(promStats.Data.Result) != 0 {
 		num, _ := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
-		ticks += num 
+		ticks += num
 	}
 
 	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
@@ -222,7 +222,7 @@ func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map
 
 func getRemainderNomad(clusterAddress string, remainders map[string][]string, e chan error) (float64, float64, float64) {
 	var rss, cache, ticks float64
-	
+
 	for allocID, slice := range remainders {
 		api := "http://" + clusterAddress + "/v1/client/allocation/" + allocID + "/stats"
 		response, err := http.Get(api)
@@ -255,9 +255,9 @@ func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e cha
 	var rss, ticks, cache float64
 	remainders := make(map[string][]string)
 
-	rss = getRSS(clusterAddress, metricsAddress, jobID, name, remainders, e) 
-	cache = getCache(clusterAddress, metricsAddress, jobID, name, remainders, e) 
-	ticks = getTicks(clusterAddress, metricsAddress, jobID, name, remainders, e) 
+	rss = getRSS(clusterAddress, metricsAddress, jobID, name, remainders, e)
+	cache = getCache(clusterAddress, metricsAddress, jobID, name, remainders, e)
+	ticks = getTicks(clusterAddress, metricsAddress, jobID, name, remainders, e)
 
 	rssRemainder, cacheRemainder, ticksRemainder := getRemainderNomad(clusterAddress, remainders, e)
 	rss += rssRemainder
@@ -311,9 +311,9 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 
 	for i := range jobs {
 		fmt.Println("Getting job", i, "resources...")
-		jobID := jobs[i].ID 
-		name := jobs[i].Name 
-		dataCentersSlice := jobs[i].Datacenters 
+		jobID := jobs[i].ID
+		name := jobs[i].Name
+		dataCentersSlice := jobs[i].Datacenters
 		namespace := jobs[i].JobSummary.Namespace
 		rss, ticks, cache := aggUsageResources(clusterAddress, metricsAddress, jobID, name, e)
 		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(clusterAddress, jobID, e)
