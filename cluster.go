@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
@@ -102,6 +101,10 @@ type JobSum struct {
 	Namespace string
 }
 
+type Alloc struct {
+	ID string
+}
+
 func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct{} {
 	api := "http://" + clusterAddress + "/api/v1/query?query=" + query
 	response, err := http.Get(api) // customize for timeout
@@ -126,20 +129,24 @@ func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct
 	return m
 }
 
-func getNomadAllocs(clusterAddress, jobID string) map[string]string {
+func getNomadAllocs(clusterAddress, jobID string, e chan error) map[string]struct{} {
 	api := "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
-	response, _ := http.Get(api)
-	data, _ := ioutil.ReadAll(response.Body)
+	response, err := http.Get(api)
+	if err != nil {
+		e <- err
+	}
 
-	sliceOfAllocs := []byte(string(data))
-	keys := make([]interface{}, 0)
-	json.Unmarshal(sliceOfAllocs, &keys)
+	var allocs []Alloc
+	err = json.NewDecoder(response.Body).Decode(&allocs)
+	if err != nil {
+		e <- err
+	}
 
-	m := make(map[string]string)
-
-	for i := range keys {
-		allocID := keys[i].(map[string]interface{})["ID"].(string)
-		m[allocID] = "value"
+	m := make(map[string]struct{})
+	var Empty struct{}
+	for i := range allocs {
+		allocID := allocs[i].ID
+		m[allocID] = Empty
 	}
 
 	return m
@@ -155,11 +162,14 @@ func getRSS(clusterAddress, metricsAddress, jobID, name string, remainders map[s
 	var promStats RawAlloc
 	json.NewDecoder(response.Body).Decode(&promStats)
 	if len(promStats.Data.Result) != 0 {
-		num, _ := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+		if err != nil {
+			e <- err
+		}
 		rss += num / 1.049e6
 	}
 
-	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID, e)
 	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_rss_value", e)
 	for allocID := range nomadAllocs {
 		if _, ok := promAllocs[allocID]; !ok {
@@ -180,11 +190,14 @@ func getCache(clusterAddress, metricsAddress, jobID, name string, remainders map
 	var promStats RawAlloc
 	json.NewDecoder(response.Body).Decode(&promStats)
 	if len(promStats.Data.Result) != 0 {
-		num, _ := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+		if err != nil {
+			e <- err
+		}
 		cache += num / 1.049e6
 	}
 
-	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID, e)
 	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_cache_value", e)
 	for allocID := range nomadAllocs {
 		if _, ok := promAllocs[allocID]; !ok {
@@ -205,11 +218,14 @@ func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map
 	var promStats RawAlloc
 	json.NewDecoder(response.Body).Decode(&promStats)
 	if len(promStats.Data.Result) != 0 {
-		num, _ := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+		if err != nil {
+			e <- err
+		}
 		ticks += num
 	}
 
-	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID, e)
 	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_cpu_total_ticks_value", e)
 	for allocID := range nomadAllocs {
 		if _, ok := promAllocs[allocID]; !ok {
