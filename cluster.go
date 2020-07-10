@@ -294,7 +294,6 @@ func aggReqResources(clusterAddress, jobID string, e chan error) (float64, float
 	var jobSpec JobSpec
 	json.NewDecoder(response.Body).Decode(&jobSpec)
 	if jobSpec.TaskGroups == nil {
-		fmt.Println("TASKGROUPS NIL\nJOB:", jobID)
 		return 0, 0, 0, 0
 	}
 	taskGroups := jobSpec.TaskGroups
