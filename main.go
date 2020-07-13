@@ -3,13 +3,12 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"sync"
 	"time"
-
-	"fmt"
 )
 
 var wg sync.WaitGroup
@@ -102,8 +101,8 @@ func collectData() {
 func main() {
 	go collectData()
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/nurd", homePage)
-	router.HandleFunc("/nurd/jobs", returnAll)
-	router.HandleFunc("/nurd/job/{id}", returnJob)
+	router.HandleFunc("/", homePage)
+	router.HandleFunc("/jobs", returnAll)
+	router.HandleFunc("/job/{id}", returnJob)
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
