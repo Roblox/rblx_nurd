@@ -73,26 +73,6 @@ func initDB() (*sql.DB, *sql.Stmt) {
 	return db, insert
 }
 
-func printRowsDB(db *sql.DB) {
-	rows, err := db.Query("SELECT * FROM resources")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var JobID, name, namespace, dataCenters, currentTime, insertTime string
-	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
-	var id int
-
-	for rows.Next() {
-		rows.Scan(&id, &JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime, &insertTime)
-		fmt.Println(strconv.Itoa(id)+": ", JobID,
-			"\n   ", uTicks,
-			"\n   ", rCPU,
-			"\n   ", uRSS,
-			"\n   ", rMemoryMB)
-	}
-}
-
 func getAllRowsDB(db *sql.DB) []JobDataDB {
 	rows, err := db.Query("SELECT * FROM resources")
 	if err != nil {
