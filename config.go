@@ -19,6 +19,8 @@ type Server struct {
 }
 
 func loadConfig(path string) ([]string, string, int, time.Duration) {
+	var metricsAddress string
+	var nomadAddresses []string
 	file, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
@@ -32,8 +34,8 @@ func loadConfig(path string) ([]string, string, int, time.Duration) {
 		log.Fatal(err)
 	}
 
-	metricsAddress := config.VictoriaMetrics.URL + ":" + config.VictoriaMetrics.Port
-	nomadAddresses := make([]string, 0)
+	metricsAddress = config.VictoriaMetrics.URL + ":" + config.VictoriaMetrics.Port
+	nomadAddresses = make([]string, 0)
 
 	for _, server := range config.Nomad {
 		nomadAddresses = append(nomadAddresses, server.URL+":"+server.Port)
