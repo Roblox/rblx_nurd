@@ -45,16 +45,8 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleRequests() {
-	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/nurd", homePage)
-	router.HandleFunc("/nurd/jobs", returnAll)
-	router.HandleFunc("/nurd/job/{id}", returnJob)
-	log.Fatal(http.ListenAndServe(":8080", router))
-}
-
 func collectData() {
-	addresses, metricsAddress, buffer, duration := Config("config.json")
+	addresses, metricsAddress, buffer, duration := loadConfig("config.json")
 	db, insert = initDB()
 
 	// While loop for scrape frequency
@@ -109,5 +101,9 @@ func collectData() {
 
 func main() {
 	go collectData()
-	handleRequests()
+	router := mux.NewRouter().StrictSlash(true)
+	router.HandleFunc("/nurd", homePage)
+	router.HandleFunc("/nurd/jobs", returnAll)
+	router.HandleFunc("/nurd/job/{id}", returnJob)
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
