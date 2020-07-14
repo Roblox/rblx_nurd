@@ -156,11 +156,13 @@ func getRSS(clusterAddress, metricsAddress, jobID, name string, remainders map[s
 	if err != nil {
 		e <- err
 	}
+
 	var promStats RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&promStats)
 	if err != nil {
 		fmt.Println("JSON ERROR 3")
 	}
+
 	if len(promStats.Data.Result) != 0 {
 		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
@@ -187,11 +189,13 @@ func getCache(clusterAddress, metricsAddress, jobID, name string, remainders map
 	if err != nil {
 		e <- err
 	}
+
 	var promStats RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&promStats)
 	if err != nil {
 		fmt.Println("JSON ERROR 4")
 	}
+
 	if len(promStats.Data.Result) != 0 {
 		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
@@ -218,11 +222,13 @@ func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map
 	if err != nil {
 		e <- err
 	}
+
 	var promStats RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&promStats)
 	if err != nil {
 		fmt.Println("JSON ERROR 5")
 	}
+
 	if len(promStats.Data.Result) != 0 {
 		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
@@ -249,16 +255,15 @@ func getCPU(clusterAddress, metricsAddress, jobID, name string, remainders map[s
 	if err != nil {
 		e <- err
 	}
+
 	var promStats RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&promStats)
 	if err != nil {
 		fmt.Println("JSON ERROR 6")
 	}
-	allocs := promStats.Data.Result
-
+	
 	m := make(map[string]float64)
-
-	for _, val := range allocs {
+	for _, val := range promStats.Data.Result {
 		num, err := strconv.ParseFloat(val.Value[1].(string), 64)
 		if err != nil {
 			e <- err
@@ -278,11 +283,13 @@ func getCPU(clusterAddress, metricsAddress, jobID, name string, remainders map[s
 			if err != nil {
 				e <- err
 			}
+
 			var allocAlloc Task
 			err = json.NewDecoder(response.Body).Decode(&allocAlloc)
 			if err != nil {
 				fmt.Println("JSON ERROR 7")
 			}
+
 			cpu += allocAlloc.Resources.CPU
 		}
 	}
@@ -297,23 +304,22 @@ func getMemoryMB(clusterAddress, metricsAddress, jobID, name string, remainders 
 	if err != nil {
 		e <- err
 	}
+
 	var promStats RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&promStats)
 	if err != nil {
 		fmt.Println("JSON ERROR 7")
 	}
-	allocs := promStats.Data.Result
 
 	m := make(map[string]float64)
-
-	for _, val := range allocs {
+	for _, val := range promStats.Data.Result {
 		num, err := strconv.ParseFloat(val.Value[1].(string), 64)
 		if err != nil {
 			e <- err
 		}
 		m[val.Metric.Alloc_id] = num / 1.049e6
 	}
-	
+
 	for _, val := range m {
 		memoryMB += val
 	}
@@ -326,15 +332,16 @@ func getMemoryMB(clusterAddress, metricsAddress, jobID, name string, remainders 
 			if err != nil {
 				e <- err
 			}
+
 			var allocAlloc Task
 			err = json.NewDecoder(response.Body).Decode(&allocAlloc)
 			if err != nil {
 				fmt.Println("JSON ERROR 8")
 			}
+
 			memoryMB += allocAlloc.Resources.MemoryMB
 		}
 	}
-
 
 	return memoryMB
 }
@@ -348,6 +355,7 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string, e 
 		if err != nil {
 			e <- err
 		}
+
 		var nomadAlloc NomadAlloc
 		err = json.NewDecoder(response.Body).Decode(&nomadAlloc)
 		if err != nil {
@@ -359,11 +367,12 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string, e 
 				resourceUsage := nomadAlloc.ResourceUsage
 				memoryStats := resourceUsage.MemoryStats
 				cpuStats := resourceUsage.CpuStats
-				if val == "rss" {
+				switch val {
+				case "rss":
 					rss += memoryStats.RSS / 1.049e6
-				} else if val == "cache" {
+				case "cache":
 					cache += memoryStats.Cache / 1.049e6
-				} else if val == "ticks" {
+				case "ticks":
 					ticks += cpuStats.TotalTicks
 				}
 			}
@@ -374,12 +383,11 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string, e 
 }
 
 func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64) {
-	var rss, ticks, cache float64
 	remainders := make(map[string][]string)
 
-	rss = getRSS(clusterAddress, metricsAddress, jobID, name, remainders, e)
-	cache = getCache(clusterAddress, metricsAddress, jobID, name, remainders, e)
-	ticks = getTicks(clusterAddress, metricsAddress, jobID, name, remainders, e)
+	rss := getRSS(clusterAddress, metricsAddress, jobID, name, remainders, e)
+	cache := getCache(clusterAddress, metricsAddress, jobID, name, remainders, e)
+	ticks := getTicks(clusterAddress, metricsAddress, jobID, name, remainders, e)
 
 	rssRemainder, cacheRemainder, ticksRemainder := getRemainderNomad(clusterAddress, remainders, e)
 	rss += rssRemainder
@@ -397,24 +405,25 @@ func aggReqResources(clusterAddress, metricsAddress, jobID, name string, e chan 
 	if err != nil {
 		e <- err
 	}
+
 	var jobSpec JobSpec
 	err = json.NewDecoder(response.Body).Decode(&jobSpec)
 	if err != nil {
 		fmt.Println("JSON ERROR 11")
 	}
+
 	if jobSpec.TaskGroups == nil {
 		return 0, 0, 0, 0
 	}
-	
+
 	for _, taskGroup := range jobSpec.TaskGroups {
-		ephemeralDisk := taskGroup.EphemeralDisk.SizeMB
 		for _, task := range taskGroup.Tasks {
 			resources := task.Resources
 			cpu += taskGroup.Count * resources.CPU
 			memoryMB += taskGroup.Count * resources.MemoryMB
 			iops += taskGroup.Count * resources.IOPS
 		}
-		diskMB += taskGroup.Count * ephemeralDisk
+		diskMB += taskGroup.Count * taskGroup.EphemeralDisk.SizeMB
 	}
 
 	return cpu, memoryMB, diskMB, iops
@@ -427,6 +436,7 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 	if err != nil {
 		e <- err
 	}
+
 	var jobs []JobDesc
 	err = json.NewDecoder(response.Body).Decode(&jobs)
 	if err != nil {
@@ -469,6 +479,5 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 	}
 
 	c <- jobData
-
 	wg.Done()
 }

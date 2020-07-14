@@ -18,14 +18,15 @@ type Server struct {
 	Port string
 }
 
-func loadConfig(path string) ([]string, string, int, time.Duration) {
+func loadConfig(path string) ([]string, string, time.Duration) {
 	var metricsAddress string
 	var nomadAddresses []string
+
 	file, err := os.Open(path)
+	defer file.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
 
 	byte, err := ioutil.ReadAll(file)
 	var config ConfigFile
@@ -46,5 +47,5 @@ func loadConfig(path string) ([]string, string, int, time.Duration) {
 		log.Fatal(err)
 	}
 
-	return nomadAddresses, metricsAddress, len(nomadAddresses), duration
+	return nomadAddresses, metricsAddress, duration
 }

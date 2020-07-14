@@ -84,19 +84,21 @@ func getAllRowsDB(db *sql.DB) []JobDataDB {
 	for rows.Next() {
 		rows.Scan(&id, &JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime, &insertTime)
 		all = append(all, JobDataDB{
-			JobID,
-			name,
-			uTicks,
-			rCPU,
-			uRSS,
-			uCache,
-			rMemoryMB,
-			rdiskMB,
-			rIOPS,
-			namespace,
-			dataCenters,
-			currentTime,
-			insertTime})
+							JobID,
+							name,
+							uTicks,
+							rCPU,
+							uRSS,
+							uCache,
+							rMemoryMB,
+							rdiskMB,
+							rIOPS,
+							namespace,
+							dataCenters,
+							currentTime,
+							insertTime,
+							},
+		)
 	}
 
 	return all
@@ -156,20 +158,23 @@ func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
 	all := make([]JobDataDB, 0)
 	for rows.Next() {
 		rows.Scan(&JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &namespace, &dataCenters, &insertTime)
-		all = append(all, JobDataDB{
-			JobID,
-			name,
-			uTicks,
-			rCPU,
-			uRSS,
-			uCache,
-			rMemoryMB,
-			rdiskMB,
-			rIOPS,
-			namespace,
-			dataCenters,
-			currentTime,
-			insertTime})
+		all = append(all,
+			JobDataDB{
+				JobID,
+				name,
+				uTicks,
+				rCPU,
+				uRSS,
+				uCache,
+				rMemoryMB,
+				rdiskMB,
+				rIOPS,
+				namespace,
+				dataCenters,
+				currentTime,
+				insertTime,
+			},
+		)
 	}
 
 	return all
