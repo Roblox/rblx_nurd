@@ -26,8 +26,8 @@ func returnAll(w http.ResponseWriter, r *http.Request) {
 
 func returnJob(w http.ResponseWriter, r *http.Request) {
 	var all []JobDataDB
-	vars := mux.Vars(r)
-	jobID := vars["id"]
+	
+	jobID := mux.Vars(r)["id"]
 	begin, okBegin := r.URL.Query()["begin"]
 	end, okEnd := r.URL.Query()["end"]
 
@@ -45,12 +45,12 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func collectData() {
-	addresses, metricsAddress, buffer, duration := loadConfig("config.json")
+	addresses, metricsAddress, duration := loadConfig("config.json")
 	db, insert = initDB()
 
 	// While loop for scrape frequency
 	for {
-		c := make(chan []JobData, buffer)
+		c := make(chan []JobData, len(addresses))
 		e := make(chan error)
 
 		// Listen for errors
@@ -92,7 +92,7 @@ func collectData() {
 			}
 		}
 
-		// printRowsDB(db)
+		//   printRowsDB(db)
 		fmt.Println("done\nElapsed:", end.Sub(begin))
 		time.Sleep(duration)
 	}
