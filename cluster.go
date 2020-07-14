@@ -2,11 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
-
-	"fmt"
 )
 
 type JobData struct {
@@ -87,6 +86,7 @@ type Disk struct {
 type Resource struct {
 	CPU      float64
 	MemoryMB float64
+	DiskMB   float64
 	IOPS     float64
 }
 
@@ -115,15 +115,13 @@ func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct
 	var allocs RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&allocs)
 	if err != nil {
-		e <- err
+		fmt.Println("JSON ERROR 1")
 	}
 
-	result := allocs.Data.Result
 	m := make(map[string]struct{})
-	var Empty struct{}
-	for _, v := range result {
-		alloc_id := v.Metric.Alloc_id
-		m[alloc_id] = Empty
+	var empty struct{}
+	for _, val := range allocs.Data.Result {
+		m[val.Metric.Alloc_id] = empty
 	}
 
 	return m
@@ -139,14 +137,13 @@ func getNomadAllocs(clusterAddress, jobID string, e chan error) map[string]struc
 	var allocs []Alloc
 	err = json.NewDecoder(response.Body).Decode(&allocs)
 	if err != nil {
-		e <- err
+		fmt.Println("JSON ERROR 2")
 	}
 
 	m := make(map[string]struct{})
-	var Empty struct{}
-	for i := range allocs {
-		allocID := allocs[i].ID
-		m[allocID] = Empty
+	var empty struct{}
+	for _, alloc := range allocs {
+		m[alloc.ID] = empty
 	}
 
 	return m
@@ -160,7 +157,10 @@ func getRSS(clusterAddress, metricsAddress, jobID, name string, remainders map[s
 		e <- err
 	}
 	var promStats RawAlloc
-	json.NewDecoder(response.Body).Decode(&promStats)
+	err = json.NewDecoder(response.Body).Decode(&promStats)
+	if err != nil {
+		fmt.Println("JSON ERROR 3")
+	}
 	if len(promStats.Data.Result) != 0 {
 		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
@@ -188,7 +188,10 @@ func getCache(clusterAddress, metricsAddress, jobID, name string, remainders map
 		e <- err
 	}
 	var promStats RawAlloc
-	json.NewDecoder(response.Body).Decode(&promStats)
+	err = json.NewDecoder(response.Body).Decode(&promStats)
+	if err != nil {
+		fmt.Println("JSON ERROR 4")
+	}
 	if len(promStats.Data.Result) != 0 {
 		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
@@ -216,7 +219,10 @@ func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map
 		e <- err
 	}
 	var promStats RawAlloc
-	json.NewDecoder(response.Body).Decode(&promStats)
+	err = json.NewDecoder(response.Body).Decode(&promStats)
+	if err != nil {
+		fmt.Println("JSON ERROR 5")
+	}
 	if len(promStats.Data.Result) != 0 {
 		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
@@ -236,6 +242,103 @@ func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map
 	return ticks
 }
 
+func getCPU(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
+	var cpu float64
+	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_allocated_value%7Bjob%3D%22" + jobID + "%22%7D)%20by%20(alloc_id)"
+	response, err := http.Get(api)
+	if err != nil {
+		e <- err
+	}
+	var promStats RawAlloc
+	err = json.NewDecoder(response.Body).Decode(&promStats)
+	if err != nil {
+		fmt.Println("JSON ERROR 6")
+	}
+	allocs := promStats.Data.Result
+
+	m := make(map[string]float64)
+
+	for _, val := range allocs {
+		num, err := strconv.ParseFloat(val.Value[1].(string), 64)
+		if err != nil {
+			e <- err
+		}
+		m[val.Metric.Alloc_id] = num
+	}
+
+	for _, val := range m {
+		cpu += val
+	}
+
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID, e)
+	for allocID := range nomadAllocs {
+		if _, ok := m[allocID]; !ok {
+			api = "http://" + clusterAddress + "/v1/allocation/" + allocID
+			response, err = http.Get(api)
+			if err != nil {
+				e <- err
+			}
+			var allocAlloc Task
+			err = json.NewDecoder(response.Body).Decode(&allocAlloc)
+			if err != nil {
+				fmt.Println("JSON ERROR 7")
+			}
+			cpu += allocAlloc.Resources.CPU
+		}
+	}
+
+	return cpu
+}
+
+func getMemoryMB(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
+	var memoryMB float64
+	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_allocated_value%7Bjob%3D%22" + jobID + "%22%7D)%20by%20(alloc_id)"
+	response, err := http.Get(api)
+	if err != nil {
+		e <- err
+	}
+	var promStats RawAlloc
+	err = json.NewDecoder(response.Body).Decode(&promStats)
+	if err != nil {
+		fmt.Println("JSON ERROR 7")
+	}
+	allocs := promStats.Data.Result
+
+	m := make(map[string]float64)
+
+	for _, val := range allocs {
+		num, err := strconv.ParseFloat(val.Value[1].(string), 64)
+		if err != nil {
+			e <- err
+		}
+		m[val.Metric.Alloc_id] = num / 1.049e6
+	}
+	
+	for _, val := range m {
+		memoryMB += val
+	}
+
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID, e)
+	for allocID := range nomadAllocs {
+		if _, ok := m[allocID]; !ok {
+			api = "http://" + clusterAddress + "/v1/allocation/" + allocID
+			response, err = http.Get(api)
+			if err != nil {
+				e <- err
+			}
+			var allocAlloc Task
+			err = json.NewDecoder(response.Body).Decode(&allocAlloc)
+			if err != nil {
+				fmt.Println("JSON ERROR 8")
+			}
+			memoryMB += allocAlloc.Resources.MemoryMB
+		}
+	}
+
+
+	return memoryMB
+}
+
 func getRemainderNomad(clusterAddress string, remainders map[string][]string, e chan error) (float64, float64, float64) {
 	var rss, cache, ticks float64
 
@@ -246,7 +349,10 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string, e 
 			e <- err
 		}
 		var nomadAlloc NomadAlloc
-		json.NewDecoder(response.Body).Decode(&nomadAlloc)
+		err = json.NewDecoder(response.Body).Decode(&nomadAlloc)
+		if err != nil {
+			fmt.Println("JSON ERROR 9")
+		}
 
 		for _, val := range slice {
 			if nomadAlloc.ResourceUsage != (MemCPU{}) {
@@ -283,8 +389,8 @@ func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e cha
 	return rss, ticks, cache
 }
 
-func aggReqResources(clusterAddress, jobID string, e chan error) (float64, float64, float64, float64) {
-	var CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal float64
+func aggReqResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64, float64) {
+	var cpu, memoryMB, diskMB, iops float64
 
 	api := "http://" + clusterAddress + "/v1/job/" + jobID
 	response, err := http.Get(api)
@@ -292,57 +398,60 @@ func aggReqResources(clusterAddress, jobID string, e chan error) (float64, float
 		e <- err
 	}
 	var jobSpec JobSpec
-	json.NewDecoder(response.Body).Decode(&jobSpec)
+	err = json.NewDecoder(response.Body).Decode(&jobSpec)
+	if err != nil {
+		fmt.Println("JSON ERROR 11")
+	}
 	if jobSpec.TaskGroups == nil {
 		return 0, 0, 0, 0
 	}
-	taskGroups := jobSpec.TaskGroups
-	for _, taskGroup := range taskGroups {
-		count := taskGroup.Count
-		tasks := taskGroup.Tasks
+	
+	for _, taskGroup := range jobSpec.TaskGroups {
 		ephemeralDisk := taskGroup.EphemeralDisk.SizeMB
-		for _, task := range tasks {
+		for _, task := range taskGroup.Tasks {
 			resources := task.Resources
-			CPUTotal += count * resources.CPU
-			memoryMBTotal += count * resources.MemoryMB
-			IOPSTotal += count * resources.IOPS
+			cpu += taskGroup.Count * resources.CPU
+			memoryMB += taskGroup.Count * resources.MemoryMB
+			iops += taskGroup.Count * resources.IOPS
 		}
-		diskMBTotal += count * ephemeralDisk
+		diskMB += taskGroup.Count * ephemeralDisk
 	}
 
-	return CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal
+	return cpu, memoryMB, diskMB, iops
 }
 
 func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e chan error) {
-	var jobsClean []JobData
-
+	var jobData []JobData
 	api := "http://" + clusterAddress + "/v1/jobs"
 	response, err := http.Get(api)
 	if err != nil {
 		e <- err
 	}
 	var jobs []JobDesc
-	json.NewDecoder(response.Body).Decode(&jobs)
+	err = json.NewDecoder(response.Body).Decode(&jobs)
+	if err != nil {
+		e <- err
+	}
 
-	for i := range jobs {
-		fmt.Println("Getting job", i, "resources...")
-		jobID := jobs[i].ID
-		name := jobs[i].Name
-		dataCentersSlice := jobs[i].Datacenters
-		namespace := jobs[i].JobSummary.Namespace
+	for _, job := range jobs {
+		fmt.Println("Getting job", job.ID)
+		jobID := job.ID
+		name := job.Name
+		dataCentersSlice := job.Datacenters
+		namespace := job.JobSummary.Namespace
 		rss, ticks, cache := aggUsageResources(clusterAddress, metricsAddress, jobID, name, e)
-		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(clusterAddress, jobID, e)
+		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(clusterAddress, metricsAddress, jobID, name, e)
 
 		var dataCenters string
-		for i, v := range dataCentersSlice {
-			dataCenters += v
+		for i, val := range dataCentersSlice {
+			dataCenters += val
 			if i != len(dataCentersSlice)-1 {
 				dataCenters += ","
 			}
 		}
 
 		currentTime := time.Now().Format("2006-01-02 15:04:05")
-		jobData := JobData{
+		job := JobData{
 			jobID,
 			name,
 			ticks,
@@ -354,11 +463,12 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 			IOPSTotal,
 			namespace,
 			dataCenters,
-			currentTime}
-		jobsClean = append(jobsClean, jobData)
+			currentTime,
+		}
+		jobData = append(jobData, job)
 	}
 
-	c <- jobsClean
+	c <- jobData
 
 	wg.Done()
 }

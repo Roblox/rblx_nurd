@@ -2,10 +2,8 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"os"
-	"strconv"
 
 	_ "github.com/denisenkom/go-mssqldb"
 )
