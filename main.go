@@ -100,7 +100,7 @@ func collectData() {
 func main() {
 	go collectData()
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/", homePage)
+	router.HandleFunc("/v1", homePage)
 	router.HandleFunc("/v1/jobs", returnAll)
 	router.HandleFunc("/v1/job/{id}", returnJob)
 	log.Fatal(http.ListenAndServe(":8080", router))

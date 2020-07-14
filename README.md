@@ -24,18 +24,17 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
         }
 2. `$ git clone git@github.com:Roblox/nurd.git`
 3. `$ cd nurd`
-4. `$ make nurd`
-5. `$ make install`
+4. `$ make install`
 5. `$ nurd`
 
 ## Usage
 From `localhost:8080`, or an alternative NURD host address, the user can access several endpoints:
 
 ### Home Page
-* **`/`**<br>
+* **`/v1`**<br>
 The home page for NURD.
     * **Sample Request**<br>
-    `http://localhost:8080`
+    `http://localhost:8080/v1`
 
 ### List All Jobs
 * **`/v1/jobs`**<br>
