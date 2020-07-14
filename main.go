@@ -26,7 +26,7 @@ func returnAll(w http.ResponseWriter, r *http.Request) {
 
 func returnJob(w http.ResponseWriter, r *http.Request) {
 	var all []JobDataDB
-	
+
 	jobID := mux.Vars(r)["id"]
 	begin, okBegin := r.URL.Query()["begin"]
 	end, okEnd := r.URL.Query()["end"]
@@ -92,7 +92,6 @@ func collectData() {
 			}
 		}
 
-		//   printRowsDB(db)
 		fmt.Println("done\nElapsed:", end.Sub(begin))
 		time.Sleep(duration)
 	}
@@ -102,7 +101,7 @@ func main() {
 	go collectData()
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", homePage)
-	router.HandleFunc("/jobs", returnAll)
-	router.HandleFunc("/job/{id}", returnJob)
+	router.HandleFunc("/v1/jobs", returnAll)
+	router.HandleFunc("/v1/job/{id}", returnJob)
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

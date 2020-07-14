@@ -32,26 +32,26 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 From `localhost:8080`, or an alternative NURD host address, the user can access several endpoints:
 
 ### Home Page
-* **`/nurd`**<br>
+* **`/`**<br>
 The home page for NURD.
     * **Sample Request**<br>
     `http://localhost:8080`
 
 ### List All Jobs
-* **`/nurd/jobs`**<br>
+* **`/v1/jobs`**<br>
 Lists all job data in NURD.
     * **Sample Request**<br>
     `http://localhost:8080/jobs`
 
 ### List Specified Job(s)
-* **`/nurd/job/:job_id`**<br>
+* **`/v1/job/:job_id`**<br>
 Lists the latest recorded job data for the specified job_id.<br>
 **Optional Parameters**<br>
 `begin`: Specifies the earliest datetime from which to query.<br>
 `end`: Specifies the latest datetime from which to query.<br>
     * **Sample Request**<br>
-        * `http://localhost:8080/job/sample_job_id`<br>
-        * `http://localhost:8080/job/sample_job_id?begin=2020-07-07%2017:34:53&end=2020-07-08%2017:42:19`
+        * `http://localhost:8080/v1/job/sample_job_id`<br>
+        * `http://localhost:8080/v1/job/sample_job_id?begin=2020-07-07%2017:34:53&end=2020-07-08%2017:42:19`
     * **Sample Response**<br>
         ```
         [
