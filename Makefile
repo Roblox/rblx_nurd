@@ -1,8 +1,11 @@
-GOLANG ?= /usr/local/go/bin/go
-BINARY ?= nurd.out
+ifndef $(GOLANG)
+    GOLANG=$(shell which go)
+    export GOLANG
+endif
+BINARY ?= nurd
 
 nurd:
-	go build -o $(BINARY) cluster.go config.go db.go main.go
+	$(GOLANG) build -o $(BINARY) cluster.go config.go db.go main.go
 
 clean:
-	rm *.out
+	rm -f $(BINARY)
