@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
-	"os"
 	"time"
 )
 
@@ -22,21 +21,14 @@ func loadConfig(path string) ([]string, string, time.Duration) {
 	var metricsAddress string
 	var nomadAddresses []string
 
-	file, err := os.Open(path)
-	defer file.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	byte, err := ioutil.ReadAll(file)
+	data, err := ioutil.ReadFile(path)
 	var config ConfigFile
-	err = json.Unmarshal(byte, &config)
+	err = json.Unmarshal(data, &config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	metricsAddress = config.VictoriaMetrics.URL + ":" + config.VictoriaMetrics.Port
-	nomadAddresses = make([]string, 0)
 
 	for _, server := range config.Nomad {
 		nomadAddresses = append(nomadAddresses, server.URL+":"+server.Port)

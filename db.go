@@ -84,20 +84,20 @@ func getAllRowsDB(db *sql.DB) []JobDataDB {
 	for rows.Next() {
 		rows.Scan(&id, &JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &rIOPS, &namespace, &dataCenters, &currentTime, &insertTime)
 		all = append(all, JobDataDB{
-							JobID,
-							name,
-							uTicks,
-							rCPU,
-							uRSS,
-							uCache,
-							rMemoryMB,
-							rdiskMB,
-							rIOPS,
-							namespace,
-							dataCenters,
-							currentTime,
-							insertTime,
-							},
+			JobID,
+			name,
+			uTicks,
+			rCPU,
+			uRSS,
+			uCache,
+			rMemoryMB,
+			rdiskMB,
+			rIOPS,
+			namespace,
+			dataCenters,
+			currentTime,
+			insertTime,
+		},
 		)
 	}
 

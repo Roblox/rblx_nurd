@@ -445,25 +445,21 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 
 	for _, job := range jobs {
 		fmt.Println("Getting job", job.ID)
-		jobID := job.ID
-		name := job.Name
-		dataCentersSlice := job.Datacenters
-		namespace := job.JobSummary.Namespace
-		rss, ticks, cache := aggUsageResources(clusterAddress, metricsAddress, jobID, name, e)
-		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(clusterAddress, metricsAddress, jobID, name, e)
+		rss, ticks, cache := aggUsageResources(clusterAddress, metricsAddress, job.ID, job.Name, e)
+		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(clusterAddress, metricsAddress, job.ID, job.Name, e)
 
 		var dataCenters string
-		for i, val := range dataCentersSlice {
+		for i, val := range job.Datacenters {
 			dataCenters += val
-			if i != len(dataCentersSlice)-1 {
+			if i != len(job.Datacenters)-1 {
 				dataCenters += ","
 			}
 		}
 
 		currentTime := time.Now().Format("2006-01-02 15:04:05")
-		job := JobData{
-			jobID,
-			name,
+		jobStruct := JobData{
+			job.ID,
+			job.Name,
 			ticks,
 			CPUTotal,
 			rss,
@@ -471,11 +467,11 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 			memoryMBTotal,
 			diskMBTotal,
 			IOPSTotal,
-			namespace,
+			job.JobSummary.Namespace,
 			dataCenters,
 			currentTime,
 		}
-		jobData = append(jobData, job)
+		jobData = append(jobData, jobStruct)
 	}
 
 	c <- jobData
