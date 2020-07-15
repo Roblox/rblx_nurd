@@ -70,6 +70,7 @@ type JobSpec struct {
 }
 
 type TaskGroup struct {
+	Name          string
 	Count         float64
 	Tasks         []Task
 	EphemeralDisk Disk
@@ -103,7 +104,8 @@ type JobSum struct {
 }
 
 type Alloc struct {
-	ID string
+	ID        string
+	TaskGroup string
 }
 
 func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct{} {
@@ -301,7 +303,7 @@ func aggUsed(clusterAddress, metricsAddress string, job JobDesc, e chan error) (
 }
 
 func aggRequested(clusterAddress, metricsAddress string, job JobDesc, e chan error) (float64, float64, float64, float64) {
-	var cpu, memoryMB, diskMB, iops float64
+	var cpu, memoryMB, diskMB, iops, count float64
 
 	api := "http://" + clusterAddress + "/v1/job/" + job.ID
 	response, err := http.Get(api)
@@ -319,14 +321,36 @@ func aggRequested(clusterAddress, metricsAddress string, job JobDesc, e chan err
 		return 0, 0, 0, 0
 	}
 
+	counts := make(map[string]float64)
+	if job.Type == "system" {
+		api = "http://" + clusterAddress + "/v1/job/" + job.ID + "/allocations"
+		response, err := http.Get(api)
+		if err != nil {
+			e <- err
+		}
+
+		var allocs []Alloc
+		err = json.NewDecoder(response.Body).Decode(&allocs)
+		for _, val := range allocs {
+			counts[val.TaskGroup] += 1
+		}
+	}
+
 	for _, taskGroup := range jobSpec.TaskGroups {
+		switch job.Type {
+		case "service":
+			count = taskGroup.Count
+		case "system":
+			count = counts[taskGroup.Name]
+		}
+
 		for _, task := range taskGroup.Tasks {
 			resources := task.Resources
-			cpu += taskGroup.Count * resources.CPU
-			memoryMB += taskGroup.Count * resources.MemoryMB
-			iops += taskGroup.Count * resources.IOPS
+			cpu += count * resources.CPU
+			memoryMB += count * resources.MemoryMB
+			iops += count * resources.IOPS
 		}
-		diskMB += taskGroup.Count * taskGroup.EphemeralDisk.SizeMB
+		diskMB += count * taskGroup.EphemeralDisk.SizeMB
 	}
 
 	return cpu, memoryMB, diskMB, iops
@@ -349,8 +373,8 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 	}
 
 	for i, job := range jobs {
-		fmt.Println("Getting job", i, "(" + job.Type + ")", job.ID)
-		
+		fmt.Println("Getting job", i, "("+job.Type+")", job.ID)
+
 		switch job.Type {
 		case "system":
 			rss, ticks, cache = aggUsed(clusterAddress, metricsAddress, job, e)
