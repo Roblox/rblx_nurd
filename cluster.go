@@ -152,9 +152,9 @@ func getNomadAllocs(clusterAddress, jobID string, e chan error) map[string]struc
 	return m
 }
 
-func getRSS(clusterAddress, metricsAddress string, job JobDesc, remainders map[string][]string, e chan error) float64 {
+func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string, e chan error) float64 {
 	var rss float64
-	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + job.Name + "%22%7D)%20by%20(job)"
+	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
 		e <- err
@@ -174,7 +174,7 @@ func getRSS(clusterAddress, metricsAddress string, job JobDesc, remainders map[s
 		rss += num / 1.049e6
 	}
 
-	nomadAllocs := getNomadAllocs(clusterAddress, job.ID, e)
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID, e)
 	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_rss_value", e)
 	for allocID := range nomadAllocs {
 		if _, ok := promAllocs[allocID]; !ok {
@@ -185,9 +185,9 @@ func getRSS(clusterAddress, metricsAddress string, job JobDesc, remainders map[s
 	return rss
 }
 
-func getCache(clusterAddress, metricsAddress string, job JobDesc, remainders map[string][]string, e chan error) float64 {
+func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string, e chan error) float64 {
 	var cache float64
-	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22" + job.Name + "%22%7D)%20by%20(job)"
+	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
 		e <- err
@@ -207,7 +207,7 @@ func getCache(clusterAddress, metricsAddress string, job JobDesc, remainders map
 		cache += num / 1.049e6
 	}
 
-	nomadAllocs := getNomadAllocs(clusterAddress, job.ID, e)
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID, e)
 	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_cache_value", e)
 	for allocID := range nomadAllocs {
 		if _, ok := promAllocs[allocID]; !ok {
@@ -218,9 +218,9 @@ func getCache(clusterAddress, metricsAddress string, job JobDesc, remainders map
 	return cache
 }
 
-func getTicks(clusterAddress, metricsAddress string, job JobDesc, remainders map[string][]string, e chan error) float64 {
+func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string, e chan error) float64 {
 	var ticks float64
-	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + job.Name + "%22%7D)%20by%20(job)"
+	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
 		e <- err
@@ -240,7 +240,7 @@ func getTicks(clusterAddress, metricsAddress string, job JobDesc, remainders map
 		ticks += num
 	}
 
-	nomadAllocs := getNomadAllocs(clusterAddress, job.ID, e)
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID, e)
 	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_cpu_total_ticks_value", e)
 	for allocID := range nomadAllocs {
 		if _, ok := promAllocs[allocID]; !ok {
@@ -287,12 +287,12 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string, e 
 	return rss, cache, ticks
 }
 
-func aggUsed(clusterAddress, metricsAddress string, job JobDesc, e chan error) (float64, float64, float64) {
+func aggUsed(clusterAddress, metricsAddress, jobID, jobName string, e chan error) (float64, float64, float64) {
 	remainders := make(map[string][]string)
 
-	rss := getRSS(clusterAddress, metricsAddress, job, remainders, e)
-	cache := getCache(clusterAddress, metricsAddress, job, remainders, e)
-	ticks := getTicks(clusterAddress, metricsAddress, job, remainders, e)
+	rss := getRSS(clusterAddress, metricsAddress, jobID, jobName, remainders, e)
+	cache := getCache(clusterAddress, metricsAddress, jobID, jobName, remainders, e)
+	ticks := getTicks(clusterAddress, metricsAddress, jobID, jobName, remainders, e)
 
 	rssRemainder, cacheRemainder, ticksRemainder := getRemainderNomad(clusterAddress, remainders, e)
 	rss += rssRemainder
@@ -302,10 +302,10 @@ func aggUsed(clusterAddress, metricsAddress string, job JobDesc, e chan error) (
 	return rss, ticks, cache
 }
 
-func aggRequested(clusterAddress, metricsAddress string, job JobDesc, e chan error) (float64, float64, float64, float64) {
+func aggRequested(clusterAddress, metricsAddress, jobID, jobType string, e chan error) (float64, float64, float64, float64) {
 	var cpu, memoryMB, diskMB, iops, count float64
 
-	api := "http://" + clusterAddress + "/v1/job/" + job.ID
+	api := "http://" + clusterAddress + "/v1/job/" + jobID
 	response, err := http.Get(api)
 	if err != nil {
 		e <- err
@@ -321,9 +321,9 @@ func aggRequested(clusterAddress, metricsAddress string, job JobDesc, e chan err
 		return 0, 0, 0, 0
 	}
 
-	counts := make(map[string]float64)
-	if job.Type == "system" {
-		api = "http://" + clusterAddress + "/v1/job/" + job.ID + "/allocations"
+	mapTaskGroupCount := make(map[string]float64)
+	if jobType == "system" {
+		api = "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
 		response, err := http.Get(api)
 		if err != nil {
 			e <- err
@@ -331,17 +331,17 @@ func aggRequested(clusterAddress, metricsAddress string, job JobDesc, e chan err
 
 		var allocs []Alloc
 		err = json.NewDecoder(response.Body).Decode(&allocs)
-		for _, val := range allocs {
-			counts[val.TaskGroup] += 1
+		for _, alloc := range allocs {
+			mapTaskGroupCount[alloc.TaskGroup] += 1
 		}
 	}
 
 	for _, taskGroup := range jobSpec.TaskGroups {
-		switch job.Type {
+		switch jobType {
 		case "service":
 			count = taskGroup.Count
 		case "system":
-			count = counts[taskGroup.Name]
+			count = mapTaskGroupCount[taskGroup.Name]
 		}
 
 		for _, task := range taskGroup.Tasks {
@@ -372,19 +372,12 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 		e <- err
 	}
 
-	for i, job := range jobs {
-		fmt.Println("Getting job", i, "("+job.Type+")", job.ID)
-
-		switch job.Type {
-		case "system":
-			rss, ticks, cache = aggUsed(clusterAddress, metricsAddress, job, e)
-			CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal = aggRequested(clusterAddress, metricsAddress, job, e)
-		case "service":
-			rss, ticks, cache = aggUsed(clusterAddress, metricsAddress, job, e)
-			CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal = aggRequested(clusterAddress, metricsAddress, job, e)
-		default:
+	for _, job := range jobs {
+		if job.Type != "system" && job.Type != "service" {
 			continue
 		}
+		rss, ticks, cache = aggUsed(clusterAddress, metricsAddress, job.ID, job.Name, e)
+		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal = aggRequested(clusterAddress, metricsAddress, job.ID, job.Type, e)
 
 		var dataCenters string
 		for i, val := range job.Datacenters {
