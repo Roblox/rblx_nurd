@@ -67,7 +67,7 @@ func collectData() {
 		go func(e chan error) {
 			for {
 				err := <-e
-				log.Fatal(err)
+				log.Error(err)
 			}
 		}(e)
 

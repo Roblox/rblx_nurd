@@ -2,10 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type JobData struct {
@@ -118,7 +121,7 @@ func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct
 	var allocs RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&allocs)
 	if err != nil {
-		fmt.Println("JSON ERROR 1")
+		e <- err
 	}
 
 	m := make(map[string]struct{})
@@ -140,7 +143,7 @@ func getNomadAllocs(clusterAddress, jobID string, e chan error) map[string]struc
 	var allocs []Alloc
 	err = json.NewDecoder(response.Body).Decode(&allocs)
 	if err != nil {
-		fmt.Println("JSON ERROR 2")
+		e <- err
 	}
 
 	m := make(map[string]struct{})
@@ -163,7 +166,7 @@ func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders ma
 	var promStats RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&promStats)
 	if err != nil {
-		fmt.Println("JSON ERROR 3")
+		e <- err
 	}
 
 	if len(promStats.Data.Result) != 0 {
@@ -196,7 +199,7 @@ func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	var promStats RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&promStats)
 	if err != nil {
-		fmt.Println("JSON ERROR 4")
+		e <- err
 	}
 
 	if len(promStats.Data.Result) != 0 {
@@ -229,7 +232,7 @@ func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	var promStats RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&promStats)
 	if err != nil {
-		fmt.Println("JSON ERROR 5")
+		e <- err
 	}
 
 	if len(promStats.Data.Result) != 0 {
@@ -264,7 +267,7 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string, e 
 		var nomadAlloc NomadAlloc
 		err = json.NewDecoder(response.Body).Decode(&nomadAlloc)
 		if err != nil {
-			fmt.Println("JSON ERROR 9")
+			e <- err
 		}
 
 		for _, val := range slice {
@@ -314,7 +317,7 @@ func aggRequested(clusterAddress, metricsAddress, jobID, jobType string, e chan 
 	var jobSpec JobSpec
 	err = json.NewDecoder(response.Body).Decode(&jobSpec)
 	if err != nil {
-		fmt.Println("JSON ERROR 11")
+		e <- err
 	}
 
 	if jobSpec.TaskGroups == nil {
@@ -364,6 +367,11 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 	if err != nil {
 		e <- err
 	}
+	if response == nil {
+		e <- errors.New("nil response from Nomad API /v1/jobs")
+		wg.Done()
+		return
+	}
 
 	var jobs []JobDesc
 	err = json.NewDecoder(response.Body).Decode(&jobs)
@@ -371,7 +379,16 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 		e <- err
 	}
 
+	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		e <- err
+	}
+	log.SetOutput(logFile)
+	log.SetLevel(log.TraceLevel)
+
 	for _, job := range jobs {
+		log.Trace(job.ID)
+		
 		if job.Type != "system" && job.Type != "service" {
 			continue
 		}

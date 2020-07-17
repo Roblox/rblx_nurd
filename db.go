@@ -2,9 +2,9 @@ package main
 
 import (
 	"database/sql"
-	"log"
 	"os"
 
+	log "github.com/sirupsen/logrus"
 	_ "github.com/denisenkom/go-mssqldb"
 )
 
@@ -25,9 +25,15 @@ type JobDataDB struct {
 }
 
 func initDB() (*sql.DB, *sql.Stmt) {
+	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Error(err)
+	}
+	log.SetOutput(logFile)
+
 	db, err := sql.Open("mssql", os.Getenv("CONNECTION_STRING"))
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	createTable, err := db.Prepare(`if not exists (select * from sysobjects where name='resources' and xtype='U')
@@ -47,7 +53,7 @@ func initDB() (*sql.DB, *sql.Stmt) {
 		date DATETIME,
 		insertTime DATETIME);`)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	createTable.Exec()
 
@@ -65,16 +71,22 @@ func initDB() (*sql.DB, *sql.Stmt) {
 		date,
 		insertTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	return db, insert
 }
 
 func getAllRowsDB(db *sql.DB) []JobDataDB {
+	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Error(err)
+	}
+	log.SetOutput(logFile)
+
 	rows, err := db.Query("SELECT * FROM resources")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	all := make([]JobDataDB, 0)
@@ -105,13 +117,20 @@ func getAllRowsDB(db *sql.DB) []JobDataDB {
 }
 
 func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
+	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Error(err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
 	jobID = "'" + jobID + "'"
 	rows, err := db.Query(`SELECT JobID, name, SUM(uTicks), SUM(rCPU), SUM(uRSS), SUM(uCache), SUM(rMemoryMB), SUM(rdiskMB), namespace, dataCenters, insertTime 
 						   FROM resources 
 						   WHERE insertTime IN (SELECT MAX(insertTime) FROM resources) AND JobID = ` + jobID + ` 
 						   GROUP BY JobID, name, namespace, dataCenters, insertTime`)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
@@ -140,6 +159,12 @@ func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
 }
 
 func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
+	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Error(err)
+	}
+	log.SetOutput(logFile)
+	
 	jobID = "'" + jobID + "'"
 	begin = "'" + begin + "'"
 	end = "'" + end + "'"
@@ -149,7 +174,7 @@ func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
 						   GROUP BY JobID, name, namespace, dataCenters, insertTime
 						   ORDER BY insertTime DESC`)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
