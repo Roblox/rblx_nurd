@@ -121,7 +121,6 @@ func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
 	if err != nil {
 		log.Error(err)
 	}
-	defer logFile.Close()
 	log.SetOutput(logFile)
 
 	jobID = "'" + jobID + "'"

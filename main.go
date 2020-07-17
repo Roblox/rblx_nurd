@@ -66,8 +66,9 @@ func collectData() {
 
 		go func(e chan error) {
 			for {
-				err := <-e
-				log.Error(err)
+				errInfo := <-e
+				errLog := log.WithFields(log.Fields{"Func": errInfo.FuncName})
+				errLog.Error(errInfo.Err)
 			}
 		}(e)
 
