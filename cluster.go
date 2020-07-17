@@ -70,6 +70,7 @@ type JobSpec struct {
 }
 
 type TaskGroup struct {
+	Name          string
 	Count         float64
 	Tasks         []Task
 	EphemeralDisk Disk
@@ -94,6 +95,7 @@ type JobDesc struct {
 	ID          string
 	Name        string
 	Datacenters []string
+	Type        string
 	JobSummary  JobSum
 }
 
@@ -102,12 +104,13 @@ type JobSum struct {
 }
 
 type Alloc struct {
-	ID string
+	ID        string
+	TaskGroup string
 }
 
 func getPromAllocs(clusterAddress, query string, e chan error) map[string]struct{} {
 	api := "http://" + clusterAddress + "/api/v1/query?query=" + query
-	response, err := http.Get(api) // customize for timeout
+	response, err := http.Get(api)
 	if err != nil {
 		e <- err
 	}
@@ -149,9 +152,9 @@ func getNomadAllocs(clusterAddress, jobID string, e chan error) map[string]struc
 	return m
 }
 
-func getRSS(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
+func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string, e chan error) float64 {
 	var rss float64
-	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
+	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
 		e <- err
@@ -182,9 +185,9 @@ func getRSS(clusterAddress, metricsAddress, jobID, name string, remainders map[s
 	return rss
 }
 
-func getCache(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
+func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string, e chan error) float64 {
 	var cache float64
-	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
+	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
 		e <- err
@@ -215,9 +218,9 @@ func getCache(clusterAddress, metricsAddress, jobID, name string, remainders map
 	return cache
 }
 
-func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
+func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string, e chan error) float64 {
 	var ticks float64
-	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + name + "%22%7D)%20by%20(job)"
+	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
 		e <- err
@@ -246,104 +249,6 @@ func getTicks(clusterAddress, metricsAddress, jobID, name string, remainders map
 	}
 
 	return ticks
-}
-
-func getCPU(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
-	var cpu float64
-	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_allocated_value%7Bjob%3D%22" + jobID + "%22%7D)%20by%20(alloc_id)"
-	response, err := http.Get(api)
-	if err != nil {
-		e <- err
-	}
-
-	var promStats RawAlloc
-	err = json.NewDecoder(response.Body).Decode(&promStats)
-	if err != nil {
-		fmt.Println("JSON ERROR 6")
-	}
-	
-	m := make(map[string]float64)
-	for _, val := range promStats.Data.Result {
-		num, err := strconv.ParseFloat(val.Value[1].(string), 64)
-		if err != nil {
-			e <- err
-		}
-		m[val.Metric.Alloc_id] = num
-	}
-
-	for _, val := range m {
-		cpu += val
-	}
-
-	nomadAllocs := getNomadAllocs(clusterAddress, jobID, e)
-	for allocID := range nomadAllocs {
-		if _, ok := m[allocID]; !ok {
-			api = "http://" + clusterAddress + "/v1/allocation/" + allocID
-			response, err = http.Get(api)
-			if err != nil {
-				e <- err
-			}
-
-			var allocAlloc Task
-			err = json.NewDecoder(response.Body).Decode(&allocAlloc)
-			if err != nil {
-				fmt.Println("JSON ERROR 7")
-			}
-
-			cpu += allocAlloc.Resources.CPU
-		}
-	}
-
-	return cpu
-}
-
-func getMemoryMB(clusterAddress, metricsAddress, jobID, name string, remainders map[string][]string, e chan error) float64 {
-	var memoryMB float64
-	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_allocated_value%7Bjob%3D%22" + jobID + "%22%7D)%20by%20(alloc_id)"
-	response, err := http.Get(api)
-	if err != nil {
-		e <- err
-	}
-
-	var promStats RawAlloc
-	err = json.NewDecoder(response.Body).Decode(&promStats)
-	if err != nil {
-		fmt.Println("JSON ERROR 7")
-	}
-
-	m := make(map[string]float64)
-	for _, val := range promStats.Data.Result {
-		num, err := strconv.ParseFloat(val.Value[1].(string), 64)
-		if err != nil {
-			e <- err
-		}
-		m[val.Metric.Alloc_id] = num / 1.049e6
-	}
-
-	for _, val := range m {
-		memoryMB += val
-	}
-
-	nomadAllocs := getNomadAllocs(clusterAddress, jobID, e)
-	for allocID := range nomadAllocs {
-		if _, ok := m[allocID]; !ok {
-			api = "http://" + clusterAddress + "/v1/allocation/" + allocID
-			response, err = http.Get(api)
-			if err != nil {
-				e <- err
-			}
-
-			var allocAlloc Task
-			err = json.NewDecoder(response.Body).Decode(&allocAlloc)
-			if err != nil {
-				fmt.Println("JSON ERROR 8")
-			}
-
-			memoryMB += allocAlloc.Resources.MemoryMB
-		}
-	}
-
-	return memoryMB
 }
 
 func getRemainderNomad(clusterAddress string, remainders map[string][]string, e chan error) (float64, float64, float64) {
@@ -382,12 +287,12 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string, e 
 	return rss, cache, ticks
 }
 
-func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64) {
+func aggUsed(clusterAddress, metricsAddress, jobID, jobName string, e chan error) (float64, float64, float64) {
 	remainders := make(map[string][]string)
 
-	rss := getRSS(clusterAddress, metricsAddress, jobID, name, remainders, e)
-	cache := getCache(clusterAddress, metricsAddress, jobID, name, remainders, e)
-	ticks := getTicks(clusterAddress, metricsAddress, jobID, name, remainders, e)
+	rss := getRSS(clusterAddress, metricsAddress, jobID, jobName, remainders, e)
+	cache := getCache(clusterAddress, metricsAddress, jobID, jobName, remainders, e)
+	ticks := getTicks(clusterAddress, metricsAddress, jobID, jobName, remainders, e)
 
 	rssRemainder, cacheRemainder, ticksRemainder := getRemainderNomad(clusterAddress, remainders, e)
 	rss += rssRemainder
@@ -397,8 +302,8 @@ func aggUsageResources(clusterAddress, metricsAddress, jobID, name string, e cha
 	return rss, ticks, cache
 }
 
-func aggReqResources(clusterAddress, metricsAddress, jobID, name string, e chan error) (float64, float64, float64, float64) {
-	var cpu, memoryMB, diskMB, iops float64
+func aggRequested(clusterAddress, metricsAddress, jobID, jobType string, e chan error) (float64, float64, float64, float64) {
+	var cpu, memoryMB, diskMB, iops, count float64
 
 	api := "http://" + clusterAddress + "/v1/job/" + jobID
 	response, err := http.Get(api)
@@ -416,14 +321,36 @@ func aggReqResources(clusterAddress, metricsAddress, jobID, name string, e chan 
 		return 0, 0, 0, 0
 	}
 
+	mapTaskGroupCount := make(map[string]float64)
+	if jobType == "system" {
+		api = "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
+		response, err := http.Get(api)
+		if err != nil {
+			e <- err
+		}
+
+		var allocs []Alloc
+		err = json.NewDecoder(response.Body).Decode(&allocs)
+		for _, alloc := range allocs {
+			mapTaskGroupCount[alloc.TaskGroup] += 1
+		}
+	}
+
 	for _, taskGroup := range jobSpec.TaskGroups {
+		switch jobType {
+		case "service":
+			count = taskGroup.Count
+		case "system":
+			count = mapTaskGroupCount[taskGroup.Name]
+		}
+
 		for _, task := range taskGroup.Tasks {
 			resources := task.Resources
-			cpu += taskGroup.Count * resources.CPU
-			memoryMB += taskGroup.Count * resources.MemoryMB
-			iops += taskGroup.Count * resources.IOPS
+			cpu += count * resources.CPU
+			memoryMB += count * resources.MemoryMB
+			iops += count * resources.IOPS
 		}
-		diskMB += taskGroup.Count * taskGroup.EphemeralDisk.SizeMB
+		diskMB += count * taskGroup.EphemeralDisk.SizeMB
 	}
 
 	return cpu, memoryMB, diskMB, iops
@@ -431,6 +358,8 @@ func aggReqResources(clusterAddress, metricsAddress, jobID, name string, e chan 
 
 func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e chan error) {
 	var jobData []JobData
+	var rss, ticks, cache, CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal float64
+
 	api := "http://" + clusterAddress + "/v1/jobs"
 	response, err := http.Get(api)
 	if err != nil {
@@ -444,9 +373,11 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 	}
 
 	for _, job := range jobs {
-		fmt.Println("Getting job", job.ID)
-		rss, ticks, cache := aggUsageResources(clusterAddress, metricsAddress, job.ID, job.Name, e)
-		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal := aggReqResources(clusterAddress, metricsAddress, job.ID, job.Name, e)
+		if job.Type != "system" && job.Type != "service" {
+			continue
+		}
+		rss, ticks, cache = aggUsed(clusterAddress, metricsAddress, job.ID, job.Name, e)
+		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal = aggRequested(clusterAddress, metricsAddress, job.ID, job.Type, e)
 
 		var dataCenters string
 		for i, val := range job.Datacenters {
