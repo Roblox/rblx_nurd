@@ -64,13 +64,12 @@ func collectData() {
 		c := make(chan []JobData, len(nomadAddresses))
 		e := make(chan error)
 
-		// Listen for errors
 		go func(e chan error) {
-			err := <-e
-			log.Fatal(err)
+			for {
+				err := <-e
+				log.Fatal(err)
+			}
 		}(e)
-
-		begin := time.Now()
 
 		// Goroutines for each cluster address
 		for _, address := range nomadAddresses {
@@ -80,8 +79,6 @@ func collectData() {
 
 		wg.Wait()
 		close(c)
-
-		end := time.Now()
 
 		// Insert into db from channel
 		insertTime := time.Now().Truncate(time.Minute).Format("2006-01-02 15:04:05")
@@ -103,7 +100,7 @@ func collectData() {
 			}
 		}
 
-		fmt.Println("done\nElapsed:", end.Sub(begin))
+		log.Trace("END AGGREGATION")
 		time.Sleep(duration)
 	}
 }
