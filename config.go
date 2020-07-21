@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )

@@ -24,27 +24,56 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func returnAll(w http.ResponseWriter, r *http.Request) {
-	all := getAllRowsDB(db)
+	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Error(err)
+	}
+	log.SetOutput(logFile)
+	log.SetLevel(log.TraceLevel)
+	log.SetReportCaller(true)
+	log.Trace(r)
+
+	all := getAllRowsDB(db, logFile)
 	json.NewEncoder(w).Encode(all)
+
+
+	err = logFile.Close()
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func returnJob(w http.ResponseWriter, r *http.Request) {
 	var all []JobDataDB
+
+	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Error(err)
+	}
+	log.SetOutput(logFile)
+	log.SetLevel(log.TraceLevel)
+	log.SetReportCaller(true)
+	log.Trace(r)
 
 	jobID := mux.Vars(r)["id"]
 	begin, okBegin := r.URL.Query()["begin"]
 	end, okEnd := r.URL.Query()["end"]
 
 	if !okBegin && !okEnd {
-		all = getLatestJobDB(db, jobID)
+		all = getLatestJobDB(db, jobID, logFile)
 		json.NewEncoder(w).Encode(all)
 	} else if !okBegin && okEnd {
 		fmt.Fprintf(w, "Missing query param: 'begin'")
 	} else if okBegin && !okEnd {
 		fmt.Fprintf(w, "Missing query param: 'end'")
 	} else {
-		all = getTimeSliceDB(db, jobID, begin[0], end[0])
+		all = getTimeSliceDB(db, jobID, begin[0], end[0], logFile)
 		json.NewEncoder(w).Encode(all)
+	}
+
+	err = logFile.Close()
+	if err != nil {
+		log.Error(err)
 	}
 }
 
@@ -59,25 +88,21 @@ func collectData() {
 	if err != nil {
 		log.Error(err)
 	}
-	// While loop for scrape frequency
+	log.SetOutput(logFile)
+	log.SetLevel(log.TraceLevel)
+	log.SetReportCaller(true)
+
+	db, insert = initDB(logFile)
+	
 	for {
-		c := make(chan []JobData, len(nomadAddresses))
-		e := make(chan error)
-
-		go func(e chan error) {
-			for {
-				errInfo := <-e
-				errLog := log.WithFields(log.Fields{"Func": errInfo.FuncName})
-				errLog.Error(errInfo.Err)
-			}
-		}(e)
-
-		// Goroutines for each cluster address
-		for _, address := range nomadAddresses {
+		log.Trace("BEGIN AGGREGATION")
+		c := make(chan []JobData, len(addresses))
+		
+		for _, address := range addresses {
 			wg.Add(1)
-			go reachCluster(address, metricsAddress, c, e)
+			go reachCluster(address, metricsAddress, c, logFile)
 		}
-
+		
 		wg.Wait()
 		close(c)
 
@@ -104,6 +129,11 @@ func collectData() {
 		log.Trace("END AGGREGATION")
 		time.Sleep(duration)
 	}
+
+	err = logFile.Close()
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func reloadConfig(sigs chan os.Signal) {
@@ -129,7 +159,7 @@ func main() {
 	go reloadConfig(sigs)
 
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/v1", homePage)
+	router.HandleFunc("/", homePage)
 	router.HandleFunc("/v1/jobs", returnAll)
 	router.HandleFunc("/v1/job/{id}", returnJob)
 	log.Fatal(http.ListenAndServe(":8080", router))

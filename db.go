@@ -24,16 +24,12 @@ type JobDataDB struct {
 	InsertTime  string
 }
 
-func initDB() (*sql.DB, *sql.Stmt) {
-	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Error(err)
-	}
+func initDB(logFile *os.File) (*sql.DB, *sql.Stmt) {
 	log.SetOutput(logFile)
 
 	db, err := sql.Open("mssql", os.Getenv("CONNECTION_STRING"))
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 
 	createTable, err := db.Prepare(`if not exists (select * from sysobjects where name='resources' and xtype='U')
@@ -53,7 +49,7 @@ func initDB() (*sql.DB, *sql.Stmt) {
 		date DATETIME,
 		insertTime DATETIME);`)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 	createTable.Exec()
 
@@ -71,25 +67,21 @@ func initDB() (*sql.DB, *sql.Stmt) {
 		date,
 		insertTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 
 	return db, insert
 }
 
-func getAllRowsDB(db *sql.DB) []JobDataDB {
-	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Error(err)
-	}
-	log.SetOutput(logFile)
+func getAllRowsDB(db *sql.DB, logFile *os.File) []JobDataDB {
+	all := make([]JobDataDB, 0)
 
 	rows, err := db.Query("SELECT * FROM resources")
 	if err != nil {
 		log.Error(err)
+		return all
 	}
 
-	all := make([]JobDataDB, 0)
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
 	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
 	var id int
@@ -116,12 +108,8 @@ func getAllRowsDB(db *sql.DB) []JobDataDB {
 	return all
 }
 
-func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
-	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Error(err)
-	}
-	log.SetOutput(logFile)
+func getLatestJobDB(db *sql.DB, jobID string, logFile *os.File) []JobDataDB {
+	all := make([]JobDataDB, 0)
 
 	jobID = "'" + jobID + "'"
 	rows, err := db.Query(`SELECT JobID, name, SUM(uTicks), SUM(rCPU), SUM(uRSS), SUM(uCache), SUM(rMemoryMB), SUM(rdiskMB), namespace, dataCenters, insertTime 
@@ -130,12 +118,12 @@ func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
 						   GROUP BY JobID, name, namespace, dataCenters, insertTime`)
 	if err != nil {
 		log.Error(err)
+		return all
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
 	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
 
-	all := make([]JobDataDB, 0)
 	for rows.Next() {
 		rows.Scan(&JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &namespace, &dataCenters, &insertTime)
 		all = append(all, JobDataDB{
@@ -157,12 +145,8 @@ func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
 	return all
 }
 
-func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
-	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Error(err)
-	}
-	log.SetOutput(logFile)
+func getTimeSliceDB(db *sql.DB, jobID, begin, end string, logFile *os.File) []JobDataDB {
+	all := make([]JobDataDB, 0)
 	
 	jobID = "'" + jobID + "'"
 	begin = "'" + begin + "'"
@@ -174,12 +158,12 @@ func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
 						   ORDER BY insertTime DESC`)
 	if err != nil {
 		log.Error(err)
+		return all
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
 	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
 
-	all := make([]JobDataDB, 0)
 	for rows.Next() {
 		rows.Scan(&JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &namespace, &dataCenters, &insertTime)
 		all = append(all,
