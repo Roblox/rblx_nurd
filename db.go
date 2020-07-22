@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	_ "github.com/denisenkom/go-mssqldb"
+	log "github.com/sirupsen/logrus"
 )
 
 type JobDataDB struct {
@@ -147,7 +147,7 @@ func getLatestJobDB(db *sql.DB, jobID string, logFile *os.File) []JobDataDB {
 
 func getTimeSliceDB(db *sql.DB, jobID, begin, end string, logFile *os.File) []JobDataDB {
 	all := make([]JobDataDB, 0)
-	
+
 	jobID = "'" + jobID + "'"
 	begin = "'" + begin + "'"
 	end = "'" + end + "'"

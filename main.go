@@ -36,7 +36,6 @@ func returnAll(w http.ResponseWriter, r *http.Request) {
 	all := getAllRowsDB(db, logFile)
 	json.NewEncoder(w).Encode(all)
 
-
 	err = logFile.Close()
 	if err != nil {
 		log.Error(err)
@@ -93,16 +92,16 @@ func collectData() {
 	log.SetReportCaller(true)
 
 	db, insert = initDB(logFile)
-	
+
 	for {
 		log.Trace("BEGIN AGGREGATION")
 		c := make(chan []JobData, len(addresses))
-		
+
 		for _, address := range addresses {
 			wg.Add(1)
 			go reachCluster(address, metricsAddress, c, logFile)
 		}
-		
+
 		wg.Wait()
 		close(c)
 

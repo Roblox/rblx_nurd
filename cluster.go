@@ -130,12 +130,12 @@ func getPromAllocs(clusterAddress, query string, logFile *os.File) map[string]st
 		log.Error(err)
 		return m
 	}
-	
+
 	var empty struct{}
 	for _, val := range allocs.Data.Result {
 		m[val.Metric.Alloc_id] = empty
 	}
-		
+
 	return m
 }
 
@@ -144,7 +144,7 @@ func getNomadAllocs(clusterAddress, jobID string, logFile *os.File) map[string]s
 
 	log.SetOutput(logFile)
 	log.SetReportCaller(true)
-	
+
 	api := "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
 	response, err := http.Get(api)
 	if err != nil {
@@ -255,7 +255,7 @@ func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 
 	log.SetOutput(logFile)
 	log.SetReportCaller(true)
-	
+
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
@@ -293,7 +293,7 @@ func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 
 func getRemainderNomad(clusterAddress string, remainders map[string][]string, logFile *os.File) (float64, float64, float64) {
 	var rss, cache, ticks float64
-	
+
 	log.SetOutput(logFile)
 	log.SetReportCaller(true)
 
@@ -350,7 +350,7 @@ func aggUsed(clusterAddress, metricsAddress, jobID, jobName string, logFile *os.
 
 func aggRequested(clusterAddress, metricsAddress, jobID, jobType string, logFile *os.File) (float64, float64, float64, float64) {
 	var cpu, memoryMB, diskMB, iops, count float64
-	
+
 	log.SetOutput(logFile)
 	log.SetLevel(log.TraceLevel)
 	log.SetReportCaller(true)
@@ -416,7 +416,7 @@ func aggRequested(clusterAddress, metricsAddress, jobID, jobType string, logFile
 	return cpu, memoryMB, diskMB, iops
 }
 
-func reachCluster(clusterAddress, metricsAddress string, c chan <-[]JobData, logFile *os.File) {
+func reachCluster(clusterAddress, metricsAddress string, c chan<- []JobData, logFile *os.File) {
 	var jobData []JobData
 	var rss, ticks, cache, CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal float64
 
