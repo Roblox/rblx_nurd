@@ -7,7 +7,10 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -45,12 +48,14 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func collectData() {
-	addresses, metricsAddress, duration := loadConfig("config.json")
+	// addresses, metricsAddress, duration := loadConfig("config.json")
+	loadConfig("config.json")
 	db, insert = initDB()
 
 	// While loop for scrape frequency
 	for {
-		c := make(chan []JobData, len(addresses))
+		fmt.Println(nomadAddresses)
+		c := make(chan []JobData, len(nomadAddresses))
 		e := make(chan error)
 
 		// Listen for errors
@@ -62,9 +67,9 @@ func collectData() {
 		begin := time.Now()
 
 		// Goroutines for each cluster address
-		for _, address := range addresses {
+		for _, address := range nomadAddresses {
 			wg.Add(1)
-			go reachCluster(address, metricsAddress, c, e)
+			go reachCluster(address, metricsAddressPointer, c, e)
 		}
 
 		wg.Wait()
@@ -97,8 +102,23 @@ func collectData() {
 	}
 }
 
+func reloadConfig(sigs chan os.Signal) {
+	for {
+		select {
+		case <-sigs:
+			loadConfig("config.json")
+		default:
+		}
+	}
+}
+
 func main() {
 	go collectData()
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGHUP)
+	go reloadConfig(sigs)
+
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/v1", homePage)
 	router.HandleFunc("/v1/jobs", returnAll)
