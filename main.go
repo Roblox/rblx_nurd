@@ -69,7 +69,7 @@ func collectData() {
 		// Goroutines for each cluster address
 		for _, address := range nomadAddresses {
 			wg.Add(1)
-			go reachCluster(address, metricsAddressPointer, c, e)
+			go reachCluster(address, metricsAddress, c, e)
 		}
 
 		wg.Wait()
