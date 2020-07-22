@@ -78,7 +78,7 @@ func collectData() {
 		end := time.Now()
 
 		// Insert into db from channel
-		insertTime := time.Now().Format("2006-01-02 15:04:05")
+		insertTime := time.Now().Truncate(time.Minute).Format("2006-01-02 15:04:05")
 		for jobDataSlice := range c {
 			for _, v := range jobDataSlice {
 				insert.Exec(v.JobID,
