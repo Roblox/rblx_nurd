@@ -49,9 +49,11 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func collectData() {
+	log.SetReportCaller(true)
+
 	// addresses, metricsAddress, duration := loadConfig("config.json")
 	if err := loadConfig("config.json"); err != nil {
-		log.Warning("Error in loading config file")
+		log.Error("Error in loading config file")
 	}
 	db, insert = initDB()
 	duration, err := time.ParseDuration("1m")
