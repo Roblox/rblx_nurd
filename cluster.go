@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -110,10 +109,9 @@ type Alloc struct {
 	TaskGroup string
 }
 
-func getPromAllocs(clusterAddress, query string, logFile *os.File) map[string]struct{} {
+func getPromAllocs(clusterAddress, query string) map[string]struct{} {
 	m := make(map[string]struct{})
 
-	log.SetOutput(logFile)
 	log.SetReportCaller(true)
 
 	api := "http://" + clusterAddress + "/api/v1/query?query=" + query
@@ -139,10 +137,9 @@ func getPromAllocs(clusterAddress, query string, logFile *os.File) map[string]st
 	return m
 }
 
-func getNomadAllocs(clusterAddress, jobID string, logFile *os.File) map[string]struct{} {
+func getNomadAllocs(clusterAddress, jobID string) map[string]struct{} {
 	m := make(map[string]struct{})
 
-	log.SetOutput(logFile)
 	log.SetReportCaller(true)
 
 	api := "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
@@ -168,10 +165,9 @@ func getNomadAllocs(clusterAddress, jobID string, logFile *os.File) map[string]s
 	return m
 }
 
-func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string, logFile *os.File) float64 {
+func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string) float64 {
 	var rss float64
 
-	log.SetOutput(logFile)
 	log.SetReportCaller(true)
 
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
@@ -198,8 +194,8 @@ func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders ma
 		rss += num / 1.049e6
 	}
 
-	nomadAllocs := getNomadAllocs(clusterAddress, jobID, logFile)
-	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_rss_value", logFile)
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_rss_value")
 	for allocID := range nomadAllocs {
 		if _, ok := promAllocs[allocID]; !ok {
 			remainders[allocID] = append(remainders[allocID], "rss")
@@ -209,10 +205,9 @@ func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders ma
 	return rss
 }
 
-func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string, logFile *os.File) float64 {
+func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string) float64 {
 	var cache float64
 
-	log.SetOutput(logFile)
 	log.SetReportCaller(true)
 
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
@@ -239,8 +234,8 @@ func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 		cache += num / 1.049e6
 	}
 
-	nomadAllocs := getNomadAllocs(clusterAddress, jobID, logFile)
-	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_cache_value", logFile)
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_cache_value")
 	for allocID := range nomadAllocs {
 		if _, ok := promAllocs[allocID]; !ok {
 			remainders[allocID] = append(remainders[allocID], "cache")
@@ -250,10 +245,9 @@ func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	return cache
 }
 
-func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string, logFile *os.File) float64 {
+func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders map[string][]string) float64 {
 	var ticks float64
 
-	log.SetOutput(logFile)
 	log.SetReportCaller(true)
 
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
@@ -280,8 +274,8 @@ func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 		ticks += num
 	}
 
-	nomadAllocs := getNomadAllocs(clusterAddress, jobID, logFile)
-	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_cpu_total_ticks_value", logFile)
+	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_cpu_total_ticks_value")
 	for allocID := range nomadAllocs {
 		if _, ok := promAllocs[allocID]; !ok {
 			remainders[allocID] = append(remainders[allocID], "ticks")
@@ -291,10 +285,9 @@ func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	return ticks
 }
 
-func getRemainderNomad(clusterAddress string, remainders map[string][]string, logFile *os.File) (float64, float64, float64) {
+func getRemainderNomad(clusterAddress string, remainders map[string][]string) (float64, float64, float64) {
 	var rss, cache, ticks float64
 
-	log.SetOutput(logFile)
 	log.SetReportCaller(true)
 
 	for allocID, slice := range remainders {
@@ -333,14 +326,14 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string, lo
 	return rss, cache, ticks
 }
 
-func aggUsed(clusterAddress, metricsAddress, jobID, jobName string, logFile *os.File) (float64, float64, float64) {
+func aggUsed(clusterAddress, metricsAddress, jobID, jobName string) (float64, float64, float64) {
 	remainders := make(map[string][]string)
 
-	rss := getRSS(clusterAddress, metricsAddress, jobID, jobName, remainders, logFile)
-	cache := getCache(clusterAddress, metricsAddress, jobID, jobName, remainders, logFile)
-	ticks := getTicks(clusterAddress, metricsAddress, jobID, jobName, remainders, logFile)
+	rss := getRSS(clusterAddress, metricsAddress, jobID, jobName, remainders)
+	cache := getCache(clusterAddress, metricsAddress, jobID, jobName, remainders)
+	ticks := getTicks(clusterAddress, metricsAddress, jobID, jobName, remainders)
 
-	rssRemainder, cacheRemainder, ticksRemainder := getRemainderNomad(clusterAddress, remainders, logFile)
+	rssRemainder, cacheRemainder, ticksRemainder := getRemainderNomad(clusterAddress, remainders)
 	rss += rssRemainder
 	cache += cacheRemainder
 	ticks += ticksRemainder
@@ -348,10 +341,9 @@ func aggUsed(clusterAddress, metricsAddress, jobID, jobName string, logFile *os.
 	return rss, ticks, cache
 }
 
-func aggRequested(clusterAddress, metricsAddress, jobID, jobType string, logFile *os.File) (float64, float64, float64, float64) {
+func aggRequested(clusterAddress, metricsAddress, jobID, jobType string) (float64, float64, float64, float64) {
 	var cpu, memoryMB, diskMB, iops, count float64
 
-	log.SetOutput(logFile)
 	log.SetLevel(log.TraceLevel)
 	log.SetReportCaller(true)
 
@@ -416,11 +408,10 @@ func aggRequested(clusterAddress, metricsAddress, jobID, jobType string, logFile
 	return cpu, memoryMB, diskMB, iops
 }
 
-func reachCluster(clusterAddress, metricsAddress string, c chan<- []JobData, logFile *os.File) {
+func reachCluster(clusterAddress, metricsAddress string, c chan<- []JobData) {
 	var jobData []JobData
 	var rss, ticks, cache, CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal float64
 
-	log.SetOutput(logFile)
 	log.SetLevel(log.TraceLevel)
 	log.SetReportCaller(true)
 
@@ -446,8 +437,8 @@ func reachCluster(clusterAddress, metricsAddress string, c chan<- []JobData, log
 		if job.Type != "system" && job.Type != "service" {
 			continue
 		}
-		rss, ticks, cache = aggUsed(clusterAddress, metricsAddress, job.ID, job.Name, logFile)
-		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal = aggRequested(clusterAddress, metricsAddress, job.ID, job.Type, logFile)
+		rss, ticks, cache = aggUsed(clusterAddress, metricsAddress, job.ID, job.Name)
+		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal = aggRequested(clusterAddress, metricsAddress, job.ID, job.Type)
 
 		var dataCenters string
 		for i, val := range job.Datacenters {

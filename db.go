@@ -24,9 +24,7 @@ type JobDataDB struct {
 	InsertTime  string
 }
 
-func initDB(logFile *os.File) (*sql.DB, *sql.Stmt) {
-	log.SetOutput(logFile)
-
+func initDB() (*sql.DB, *sql.Stmt) {
 	db, err := sql.Open("mssql", os.Getenv("CONNECTION_STRING"))
 	if err != nil {
 		log.Fatal(err)
@@ -73,7 +71,7 @@ func initDB(logFile *os.File) (*sql.DB, *sql.Stmt) {
 	return db, insert
 }
 
-func getAllRowsDB(db *sql.DB, logFile *os.File) []JobDataDB {
+func getAllRowsDB(db *sql.DB) []JobDataDB {
 	all := make([]JobDataDB, 0)
 
 	rows, err := db.Query("SELECT * FROM resources")
@@ -108,7 +106,7 @@ func getAllRowsDB(db *sql.DB, logFile *os.File) []JobDataDB {
 	return all
 }
 
-func getLatestJobDB(db *sql.DB, jobID string, logFile *os.File) []JobDataDB {
+func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
 	all := make([]JobDataDB, 0)
 
 	jobID = "'" + jobID + "'"
@@ -145,7 +143,7 @@ func getLatestJobDB(db *sql.DB, jobID string, logFile *os.File) []JobDataDB {
 	return all
 }
 
-func getTimeSliceDB(db *sql.DB, jobID, begin, end string, logFile *os.File) []JobDataDB {
+func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
 	all := make([]JobDataDB, 0)
 
 	jobID = "'" + jobID + "'"

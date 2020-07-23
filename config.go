@@ -3,9 +3,6 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
-	"os"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type ConfigFile struct {
@@ -25,12 +22,6 @@ var (
 
 func loadConfig(path string) error {
 	nomadAddresses = []string{}
-
-	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Error(err)
-	}
-	log.SetOutput(logFile)
 
 	data, err := ioutil.ReadFile(path)
 	if err != nil {

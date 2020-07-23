@@ -24,32 +24,17 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func returnAll(w http.ResponseWriter, r *http.Request) {
-	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Error(err)
-	}
-	log.SetOutput(logFile)
 	log.SetLevel(log.TraceLevel)
 	log.SetReportCaller(true)
 	log.Trace(r)
 
-	all := getAllRowsDB(db, logFile)
+	all := getAllRowsDB(db)
 	json.NewEncoder(w).Encode(all)
-
-	err = logFile.Close()
-	if err != nil {
-		log.Error(err)
-	}
 }
 
 func returnJob(w http.ResponseWriter, r *http.Request) {
 	var all []JobDataDB
 
-	logFile, err := os.OpenFile("nurd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Error(err)
-	}
-	log.SetOutput(logFile)
 	log.SetLevel(log.TraceLevel)
 	log.SetReportCaller(true)
 	log.Trace(r)
@@ -59,20 +44,15 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 	end, okEnd := r.URL.Query()["end"]
 
 	if !okBegin && !okEnd {
-		all = getLatestJobDB(db, jobID, logFile)
+		all = getLatestJobDB(db, jobID)
 		json.NewEncoder(w).Encode(all)
 	} else if !okBegin && okEnd {
 		fmt.Fprintf(w, "Missing query param: 'begin'")
 	} else if okBegin && !okEnd {
 		fmt.Fprintf(w, "Missing query param: 'end'")
 	} else {
-		all = getTimeSliceDB(db, jobID, begin[0], end[0], logFile)
+		all = getTimeSliceDB(db, jobID, begin[0], end[0])
 		json.NewEncoder(w).Encode(all)
-	}
-
-	err = logFile.Close()
-	if err != nil {
-		log.Error(err)
 	}
 }
 
@@ -87,19 +67,18 @@ func collectData() {
 	if err != nil {
 		log.Error(err)
 	}
-	log.SetOutput(logFile)
 	log.SetLevel(log.TraceLevel)
 	log.SetReportCaller(true)
 
-	db, insert = initDB(logFile)
+	db, insert = initDB()
 
 	for {
 		log.Trace("BEGIN AGGREGATION")
-		c := make(chan []JobData, len(addresses))
+		c := make(chan []JobData, len(nomadAddresses))
 
-		for _, address := range addresses {
+		for _, address := range nomadAddresses {
 			wg.Add(1)
-			go reachCluster(address, metricsAddress, c, logFile)
+			go reachCluster(address, metricsAddress, c)
 		}
 
 		wg.Wait()
@@ -127,11 +106,6 @@ func collectData() {
 
 		log.Trace("END AGGREGATION")
 		time.Sleep(duration)
-	}
-
-	err = logFile.Close()
-	if err != nil {
-		log.Error(err)
 	}
 }
 
