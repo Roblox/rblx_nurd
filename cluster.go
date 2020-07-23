@@ -368,12 +368,10 @@ func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e cha
 	var jobs []JobDesc
 	err = json.NewDecoder(response.Body).Decode(&jobs)
 	if err != nil {
-		fmt.Println("reachCluster()")
 		e <- err
 	}
 
 	for _, job := range jobs {
-		fmt.Println(job.ID)
 		if job.Type != "system" && job.Type != "service" {
 			continue
 		}

@@ -5,8 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"time"
-
-	"fmt"
 )
 
 type ConfigFile struct {
@@ -26,7 +24,6 @@ var (
 )
 
 func loadConfig(path string) {
-	fmt.Println("loadConfig")
 	nomadAddresses = []string{}
 
 	data, err := ioutil.ReadFile(path)
