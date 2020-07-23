@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var wg sync.WaitGroup
@@ -49,12 +50,16 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 
 func collectData() {
 	// addresses, metricsAddress, duration := loadConfig("config.json")
-	loadConfig("config.json")
+	if err := loadConfig("config.json"); err != nil {
+		log.Warning("Error in loading config file")
+	}
 	db, insert = initDB()
-
+	duration, err := time.ParseDuration("1m")
+	if err != nil {
+		log.Error(err)
+	}
 	// While loop for scrape frequency
 	for {
-		fmt.Println(nomadAddresses)
 		c := make(chan []JobData, len(nomadAddresses))
 		e := make(chan error)
 
@@ -103,10 +108,15 @@ func collectData() {
 }
 
 func reloadConfig(sigs chan os.Signal) {
+	log.SetReportCaller(true)
+
 	for {
 		select {
 		case <-sigs:
-			loadConfig("config.json")
+			log.Info("Reloading config file")
+			if err := loadConfig("config.json"); err != nil {
+				log.Error("Error in reloading config file")
+			}
 		default:
 		}
 	}
