@@ -24,6 +24,9 @@ func loadConfig(path string) error {
 	nomadAddresses = []string{}
 
 	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
 	var config ConfigFile
 	err = json.Unmarshal(data, &config)
 	if err != nil {
