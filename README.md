@@ -73,5 +73,5 @@ Lists the latest recorded job data for the specified job_id.<br>
         ```
 ### Reload Config File
 The user can reload the config file without restarting NURD by sending a SIGHUP signal.<br>
-`$ kill -1 <PID>`<br>
+`$ kill -S HUP <PID>`<br>
 Once the config file has been reloaded and SIGHUP has been sent to NURD, NURD will complete resource aggregation of the addresses in the previous config file before aggregating on the new addresses. 
