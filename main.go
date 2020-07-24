@@ -51,9 +51,8 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 func collectData() {
 	log.SetReportCaller(true)
 
-	// addresses, metricsAddress, duration := loadConfig("config.json")
 	if err := loadConfig("config.json"); err != nil {
-		log.Error("Error in loading config file")
+		log.Fatal("Error in loading config file")
 	}
 	db, insert = initDB()
 	duration, err := time.ParseDuration("1m")
@@ -117,7 +116,7 @@ func reloadConfig(sigs chan os.Signal) {
 		case <-sigs:
 			log.Info("Reloading config file")
 			if err := loadConfig("config.json"); err != nil {
-				log.Error("Error in reloading config file")
+				log.Warning("Error in reloading config file")
 			}
 		default:
 		}
