@@ -118,7 +118,7 @@ func getPromAllocs(clusterAddress, query string) map[string]struct{} {
 	response, err := http.Get(api)
 	if err != nil {
 		log.Error(err)
-		return m
+		return nil
 	}
 	defer response.Body.Close()
 
@@ -126,7 +126,7 @@ func getPromAllocs(clusterAddress, query string) map[string]struct{} {
 	err = json.NewDecoder(response.Body).Decode(&allocs)
 	if err != nil {
 		log.Error(err)
-		return m
+		return nil
 	}
 
 	var empty struct{}
@@ -146,7 +146,7 @@ func getNomadAllocs(clusterAddress, jobID string) map[string]struct{} {
 	response, err := http.Get(api)
 	if err != nil {
 		log.Error(err)
-		return m
+		return nil
 	}
 	defer response.Body.Close()
 
@@ -154,7 +154,7 @@ func getNomadAllocs(clusterAddress, jobID string) map[string]struct{} {
 	err = json.NewDecoder(response.Body).Decode(&allocs)
 	if err != nil {
 		log.Error(err)
-		return m
+		return nil
 	}
 
 	var empty struct{}
