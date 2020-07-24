@@ -3,8 +3,6 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
-	"time"
 )
 
 type ConfigFile struct {
@@ -17,15 +15,22 @@ type Server struct {
 	Port string
 }
 
-func loadConfig(path string) ([]string, string, time.Duration) {
-	var metricsAddress string
-	var nomadAddresses []string
+var (
+	nomadAddresses []string
+	metricsAddress string
+)
+
+func loadConfig(path string) error {
+	nomadAddresses = []string{}
 
 	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
 	var config ConfigFile
 	err = json.Unmarshal(data, &config)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	metricsAddress = config.VictoriaMetrics.URL + ":" + config.VictoriaMetrics.Port
@@ -34,10 +39,5 @@ func loadConfig(path string) ([]string, string, time.Duration) {
 		nomadAddresses = append(nomadAddresses, server.URL+":"+server.Port)
 	}
 
-	duration, err := time.ParseDuration("1m")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return nomadAddresses, metricsAddress, duration
+	return nil
 }

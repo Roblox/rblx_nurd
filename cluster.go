@@ -359,7 +359,6 @@ func aggRequested(clusterAddress, metricsAddress, jobID, jobType string, e chan 
 func reachCluster(clusterAddress, metricsAddress string, c chan []JobData, e chan error) {
 	var jobData []JobData
 	var rss, ticks, cache, CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal float64
-
 	api := "http://" + clusterAddress + "/v1/jobs"
 	response, err := http.Get(api)
 	if err != nil {

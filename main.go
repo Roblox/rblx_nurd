@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var wg sync.WaitGroup
@@ -45,12 +49,19 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func collectData() {
-	addresses, metricsAddress, duration := loadConfig("config.json")
-	db, insert = initDB()
+	log.SetReportCaller(true)
 
+	if err := loadConfig("config.json"); err != nil {
+		log.Fatal("Error in loading config file")
+	}
+	db, insert = initDB()
+	duration, err := time.ParseDuration("1m")
+	if err != nil {
+		log.Error(err)
+	}
 	// While loop for scrape frequency
 	for {
-		c := make(chan []JobData, len(addresses))
+		c := make(chan []JobData, len(nomadAddresses))
 		e := make(chan error)
 
 		// Listen for errors
@@ -62,7 +73,7 @@ func collectData() {
 		begin := time.Now()
 
 		// Goroutines for each cluster address
-		for _, address := range addresses {
+		for _, address := range nomadAddresses {
 			wg.Add(1)
 			go reachCluster(address, metricsAddress, c, e)
 		}
@@ -73,7 +84,7 @@ func collectData() {
 		end := time.Now()
 
 		// Insert into db from channel
-		insertTime := time.Now().Format("2006-01-02 15:04:05")
+		insertTime := time.Now().Truncate(time.Minute).Format("2006-01-02 15:04:05")
 		for jobDataSlice := range c {
 			for _, v := range jobDataSlice {
 				insert.Exec(v.JobID,
@@ -97,8 +108,28 @@ func collectData() {
 	}
 }
 
+func reloadConfig(sigs chan os.Signal) {
+	log.SetReportCaller(true)
+
+	for {
+		select {
+		case <-sigs:
+			log.Info("Reloading config file")
+			if err := loadConfig("config.json"); err != nil {
+				log.Warning("Error in reloading config file")
+			}
+		default:
+		}
+	}
+}
+
 func main() {
 	go collectData()
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGHUP)
+	go reloadConfig(sigs)
+
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/v1", homePage)
 	router.HandleFunc("/v1/jobs", returnAll)
