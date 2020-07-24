@@ -174,6 +174,10 @@ func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders ma
 	response, err := http.Get(api)
 	if err != nil {
 		log.Error(err)
+		nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+		for allocID := range nomadAllocs {
+			remainders[allocID] = append(remainders[allocID], "rss")
+		}
 		return rss
 	}
 	defer response.Body.Close()
@@ -214,6 +218,10 @@ func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	response, err := http.Get(api)
 	if err != nil {
 		log.Error(err)
+		nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+		for allocID := range nomadAllocs {
+			remainders[allocID] = append(remainders[allocID], "cache")
+		}
 		return cache
 	}
 	defer response.Body.Close()
@@ -254,6 +262,10 @@ func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	response, err := http.Get(api)
 	if err != nil {
 		log.Error(err)
+		nomadAllocs := getNomadAllocs(clusterAddress, jobID)
+		for allocID := range nomadAllocs {
+			remainders[allocID] = append(remainders[allocID], "ticks")
+		}
 		return ticks
 	}
 	defer response.Body.Close()
