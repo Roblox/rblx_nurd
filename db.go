@@ -2,10 +2,10 @@ package main
 
 import (
 	"database/sql"
-	"log"
 	"os"
 
 	_ "github.com/denisenkom/go-mssqldb"
+	log "github.com/sirupsen/logrus"
 )
 
 type JobDataDB struct {
@@ -72,12 +72,14 @@ func initDB() (*sql.DB, *sql.Stmt) {
 }
 
 func getAllRowsDB(db *sql.DB) []JobDataDB {
+	all := make([]JobDataDB, 0)
+
 	rows, err := db.Query("SELECT * FROM resources")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		return all
 	}
 
-	all := make([]JobDataDB, 0)
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
 	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
 	var id int
@@ -105,19 +107,21 @@ func getAllRowsDB(db *sql.DB) []JobDataDB {
 }
 
 func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
+	all := make([]JobDataDB, 0)
+
 	jobID = "'" + jobID + "'"
 	rows, err := db.Query(`SELECT JobID, name, SUM(uTicks), SUM(rCPU), SUM(uRSS), SUM(uCache), SUM(rMemoryMB), SUM(rdiskMB), namespace, dataCenters, insertTime 
 						   FROM resources 
 						   WHERE insertTime IN (SELECT MAX(insertTime) FROM resources) AND JobID = ` + jobID + ` 
 						   GROUP BY JobID, name, namespace, dataCenters, insertTime`)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		return all
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
 	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
 
-	all := make([]JobDataDB, 0)
 	for rows.Next() {
 		rows.Scan(&JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &namespace, &dataCenters, &insertTime)
 		all = append(all, JobDataDB{
@@ -140,6 +144,8 @@ func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
 }
 
 func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
+	all := make([]JobDataDB, 0)
+
 	jobID = "'" + jobID + "'"
 	begin = "'" + begin + "'"
 	end = "'" + end + "'"
@@ -149,13 +155,13 @@ func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
 						   GROUP BY JobID, name, namespace, dataCenters, insertTime
 						   ORDER BY insertTime DESC`)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		return all
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
 	var uTicks, rCPU, uRSS, uCache, rMemoryMB, rdiskMB, rIOPS float64
 
-	all := make([]JobDataDB, 0)
 	for rows.Next() {
 		rows.Scan(&JobID, &name, &uTicks, &rCPU, &uRSS, &uCache, &rMemoryMB, &rdiskMB, &namespace, &dataCenters, &insertTime)
 		all = append(all,

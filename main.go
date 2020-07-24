@@ -24,12 +24,20 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func returnAll(w http.ResponseWriter, r *http.Request) {
+	log.SetLevel(log.TraceLevel)
+	log.SetReportCaller(true)
+	log.Trace(r)
+
 	all := getAllRowsDB(db)
 	json.NewEncoder(w).Encode(all)
 }
 
 func returnJob(w http.ResponseWriter, r *http.Request) {
 	var all []JobDataDB
+
+	log.SetLevel(log.TraceLevel)
+	log.SetReportCaller(true)
+	log.Trace(r)
 
 	jobID := mux.Vars(r)["id"]
 	begin, okBegin := r.URL.Query()["begin"]
@@ -50,40 +58,30 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 
 func collectData() {
 	log.SetReportCaller(true)
+	log.SetLevel(log.TraceLevel)
 
 	if err := loadConfig("config.json"); err != nil {
 		log.Fatal("Error in loading config file")
 	}
+
 	db, insert = initDB()
 	duration, err := time.ParseDuration("1m")
 	if err != nil {
 		log.Error(err)
 	}
-	// While loop for scrape frequency
+
 	for {
+		log.Trace("BEGIN AGGREGATION")
 		c := make(chan []JobData, len(nomadAddresses))
-		e := make(chan error)
 
-		// Listen for errors
-		go func(e chan error) {
-			err := <-e
-			log.Fatal(err)
-		}(e)
-
-		begin := time.Now()
-
-		// Goroutines for each cluster address
 		for _, address := range nomadAddresses {
 			wg.Add(1)
-			go reachCluster(address, metricsAddress, c, e)
+			go reachCluster(address, metricsAddress, c)
 		}
 
 		wg.Wait()
 		close(c)
 
-		end := time.Now()
-
-		// Insert into db from channel
 		insertTime := time.Now().Truncate(time.Minute).Format("2006-01-02 15:04:05")
 		for jobDataSlice := range c {
 			for _, v := range jobDataSlice {
@@ -103,7 +101,7 @@ func collectData() {
 			}
 		}
 
-		fmt.Println("done\nElapsed:", end.Sub(begin))
+		log.Trace("END AGGREGATION")
 		time.Sleep(duration)
 	}
 }
@@ -131,7 +129,7 @@ func main() {
 	go reloadConfig(sigs)
 
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/v1", homePage)
+	router.HandleFunc("/", homePage)
 	router.HandleFunc("/v1/jobs", returnAll)
 	router.HandleFunc("/v1/job/{id}", returnJob)
 	log.Fatal(http.ListenAndServe(":8080", router))
