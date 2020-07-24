@@ -58,19 +58,17 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 
 func collectData() {
 	log.SetReportCaller(true)
+	log.SetLevel(log.TraceLevel)
 
 	if err := loadConfig("config.json"); err != nil {
 		log.Fatal("Error in loading config file")
 	}
+
 	db, insert = initDB()
 	duration, err := time.ParseDuration("1m")
 	if err != nil {
 		log.Error(err)
 	}
-	log.SetLevel(log.TraceLevel)
-	log.SetReportCaller(true)
-
-	db, insert = initDB()
 
 	for {
 		log.Trace("BEGIN AGGREGATION")
@@ -84,7 +82,6 @@ func collectData() {
 		wg.Wait()
 		close(c)
 
-		// Insert into db from channel
 		insertTime := time.Now().Truncate(time.Minute).Format("2006-01-02 15:04:05")
 		for jobDataSlice := range c {
 			for _, v := range jobDataSlice {
