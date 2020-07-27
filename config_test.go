@@ -14,8 +14,8 @@ func TestLoadConfig(t *testing.T) {
 
 	err = loadConfig("config_test.json")
 	assert.Empty(t, err)
-	assert.Equal(t, 2, len(nomadAddresses))
 	assert.IsType(t, []string{}, nomadAddresses)
+	assert.Equal(t, 2, len(nomadAddresses))
 	assert.IsType(t, "", nomadAddresses[0])
 	assert.Equal(t, "NomadURL0:NomadPort0", nomadAddresses[0])
 	assert.IsType(t, "", nomadAddresses[1])
