@@ -121,7 +121,7 @@ func reloadConfig(sigs chan os.Signal) {
 		case <-sigs:
 			log.Info("Reloading config file")
 			if err := loadConfig("config.json"); err != nil {
-				log.Warning(fmt.Sprintf("Error in reloading config file", err))
+				log.Warning(fmt.Sprintf("Error in reloading config file %v:", err))
 			}
 		default:
 		}
