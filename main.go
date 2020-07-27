@@ -69,7 +69,7 @@ func collectData() {
 
 	db, insert, err = initDB()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Sprintf("Error in initializing DB: %v", err))
 	}
 
 	duration, err := time.ParseDuration("1m")
