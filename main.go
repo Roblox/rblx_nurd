@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	wg sync.WaitGroup
-	db *sql.DB
+	wg     sync.WaitGroup
+	db     *sql.DB
 	insert *sql.Stmt
 )
 
@@ -64,7 +64,7 @@ func collectData() {
 
 	err := loadConfig("config.json")
 	if err != nil {
-		log.Fatal("Error in loading config file")
+		log.Fatal(fmt.Sprintf("Error in loading config file: %v", err))
 	}
 
 	db, insert, err = initDB()
@@ -74,7 +74,7 @@ func collectData() {
 
 	duration, err := time.ParseDuration("1m")
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in parsing duration: %v", err))
 	}
 
 	for {
@@ -121,7 +121,7 @@ func reloadConfig(sigs chan os.Signal) {
 		case <-sigs:
 			log.Info("Reloading config file")
 			if err := loadConfig("config.json"); err != nil {
-				log.Warning("Error in reloading config file")
+				log.Warning(fmt.Sprintf("Error in reloading config file", err))
 			}
 		default:
 		}
