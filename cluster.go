@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -117,7 +118,7 @@ func getPromAllocs(clusterAddress, query string) map[string]struct{} {
 	api := "http://" + clusterAddress + "/api/v1/query?query=" + query
 	response, err := http.Get(api)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in getting API response: %v", err))
 		return nil
 	}
 	defer response.Body.Close()
@@ -125,7 +126,7 @@ func getPromAllocs(clusterAddress, query string) map[string]struct{} {
 	var allocs RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&allocs)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 		return nil
 	}
 
@@ -145,7 +146,7 @@ func getNomadAllocs(clusterAddress, jobID string) map[string]struct{} {
 	api := "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
 	response, err := http.Get(api)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in getting API response: %v", err))
 		return nil
 	}
 	defer response.Body.Close()
@@ -153,7 +154,7 @@ func getNomadAllocs(clusterAddress, jobID string) map[string]struct{} {
 	var allocs []Alloc
 	err = json.NewDecoder(response.Body).Decode(&allocs)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 		return nil
 	}
 
@@ -173,7 +174,7 @@ func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders ma
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in getting API response: %v", err))
 		nomadAllocs := getNomadAllocs(clusterAddress, jobID)
 		for allocID := range nomadAllocs {
 			remainders[allocID] = append(remainders[allocID], "rss")
@@ -185,14 +186,14 @@ func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders ma
 	var promStats RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&promStats)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 		return rss
 	}
 
 	if len(promStats.Data.Result) != 0 {
 		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
-			log.Error(err)
+			log.Error(fmt.Sprintf("Error in parsing float: %v", err))
 			return rss
 		}
 		rss += num / 1.049e6
@@ -217,7 +218,7 @@ func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in getting API response: %v", err))
 		nomadAllocs := getNomadAllocs(clusterAddress, jobID)
 		for allocID := range nomadAllocs {
 			remainders[allocID] = append(remainders[allocID], "cache")
@@ -229,14 +230,14 @@ func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	var promStats RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&promStats)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 		return cache
 	}
 
 	if len(promStats.Data.Result) != 0 {
 		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
-			log.Error(err)
+			log.Error(fmt.Sprintf("Error in parsing float: %v", err))
 			return cache
 		}
 		cache += num / 1.049e6
@@ -261,7 +262,7 @@ func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	api := "http://" + metricsAddress + "/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22" + jobName + "%22%7D)%20by%20(job)"
 	response, err := http.Get(api)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in getting API response: %v", err))
 		nomadAllocs := getNomadAllocs(clusterAddress, jobID)
 		for allocID := range nomadAllocs {
 			remainders[allocID] = append(remainders[allocID], "ticks")
@@ -273,14 +274,14 @@ func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	var promStats RawAlloc
 	err = json.NewDecoder(response.Body).Decode(&promStats)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 		return ticks
 	}
 
 	if len(promStats.Data.Result) != 0 {
 		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
-			log.Error(err)
+			log.Error(fmt.Sprintf("Error in parsing float: %v", err))
 			return ticks
 		}
 		ticks += num
@@ -306,7 +307,7 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string) (f
 		api := "http://" + clusterAddress + "/v1/client/allocation/" + allocID + "/stats"
 		response, err := http.Get(api)
 		if err != nil {
-			log.Error(err)
+			log.Error(fmt.Sprintf("Error in getting API response: %v", err))
 			return rss, cache, ticks
 		}
 		defer response.Body.Close()
@@ -314,7 +315,7 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string) (f
 		var nomadAlloc NomadAlloc
 		err = json.NewDecoder(response.Body).Decode(&nomadAlloc)
 		if err != nil {
-			log.Error(err)
+			log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 			return rss, cache, ticks
 		}
 
@@ -362,7 +363,7 @@ func aggRequested(clusterAddress, metricsAddress, jobID, jobType string) (float6
 	api := "http://" + clusterAddress + "/v1/job/" + jobID
 	response, err := http.Get(api)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in getting API response: %v", err))
 		return cpu, memoryMB, diskMB, iops
 	}
 	defer response.Body.Close()
@@ -370,7 +371,7 @@ func aggRequested(clusterAddress, metricsAddress, jobID, jobType string) (float6
 	var jobSpec JobSpec
 	err = json.NewDecoder(response.Body).Decode(&jobSpec)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 		return cpu, memoryMB, diskMB, iops
 	}
 
@@ -383,7 +384,7 @@ func aggRequested(clusterAddress, metricsAddress, jobID, jobType string) (float6
 		api = "http://" + clusterAddress + "/v1/job/" + jobID + "/allocations"
 		response, err := http.Get(api)
 		if err != nil {
-			log.Error(err)
+			log.Error(fmt.Sprintf("Error in getting API response: %v", err))
 			return cpu, memoryMB, diskMB, iops
 		}
 		defer response.Body.Close()
@@ -391,7 +392,7 @@ func aggRequested(clusterAddress, metricsAddress, jobID, jobType string) (float6
 		var allocs []Alloc
 		err = json.NewDecoder(response.Body).Decode(&allocs)
 		if err != nil {
-			log.Error(err)
+			log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 			return cpu, memoryMB, diskMB, iops
 		}
 
@@ -430,7 +431,7 @@ func reachCluster(clusterAddress, metricsAddress string, c chan<- []JobData) {
 	api := "http://" + clusterAddress + "/v1/jobs"
 	response, err := http.Get(api)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in getting API response: %v", err))
 		wg.Done()
 		return
 	}
@@ -439,7 +440,7 @@ func reachCluster(clusterAddress, metricsAddress string, c chan<- []JobData) {
 	var jobs []JobDesc
 	err = json.NewDecoder(response.Body).Decode(&jobs)
 	if err != nil {
-		log.Error(err)
+		log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 		return
 	}
 
