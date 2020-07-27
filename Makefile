@@ -13,7 +13,7 @@ install:
 	install -m 755 $(BINARY) $(BINDIR)
 
 test:
-	$(GOLANG) test
+	$(GOLANG) test -count=1 -v ./...
 
 clean:
 	rm -f $(BINARY)
