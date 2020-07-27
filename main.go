@@ -15,9 +15,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var wg sync.WaitGroup
-var db *sql.DB
-var insert *sql.Stmt
+var (
+	wg sync.WaitGroup
+	db *sql.DB
+	insert *sql.Stmt
+)
 
 func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome to NURD.")
@@ -60,11 +62,16 @@ func collectData() {
 	log.SetReportCaller(true)
 	log.SetLevel(log.TraceLevel)
 
-	if err := loadConfig("config.json"); err != nil {
+	err := loadConfig("config.json")
+	if err != nil {
 		log.Fatal("Error in loading config file")
 	}
 
-	db, insert = initDB()
+	db, insert, err = initDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	duration, err := time.ParseDuration("1m")
 	if err != nil {
 		log.Error(err)
