@@ -24,10 +24,10 @@ type JobDataDB struct {
 	InsertTime  string
 }
 
-func initDB() (*sql.DB, *sql.Stmt) {
+func initDB() (*sql.DB, *sql.Stmt, error) {
 	db, err := sql.Open("mssql", os.Getenv("CONNECTION_STRING"))
 	if err != nil {
-		log.Fatal(err)
+		return nil, nil, err
 	}
 
 	createTable, err := db.Prepare(`if not exists (select * from sysobjects where name='resources' and xtype='U')
@@ -47,7 +47,7 @@ func initDB() (*sql.DB, *sql.Stmt) {
 		date DATETIME,
 		insertTime DATETIME);`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, nil, err
 	}
 	createTable.Exec()
 
@@ -65,10 +65,10 @@ func initDB() (*sql.DB, *sql.Stmt) {
 		date,
 		insertTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, nil, err
 	}
 
-	return db, insert
+	return db, insert, nil
 }
 
 func getAllRowsDB(db *sql.DB) []JobDataDB {
