@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	// "fmt"
 )
 
 func TestHomePage(t *testing.T) {
@@ -35,5 +33,4 @@ func TestReturnJob(t *testing.T) {
 	handler := http.HandlerFunc(returnJob)
 	handler.ServeHTTP(rr, request)
 	assert.Equal(t, http.StatusOK, rr.Code)
-
 }
