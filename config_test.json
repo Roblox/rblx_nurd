@@ -1,0 +1,17 @@
+{
+    "VictoriaMetrics": {
+        "URL": "VMURL", 
+        "Port": "VMPort"
+    },
+    "Nomad": [
+        {
+            "URL": "NomadURL0",
+            "Port": "NomadPort0" 
+        },
+        {
+            "URL": "NomadURL1",
+            "Port": "NomadPort1" 
+        }
+    ]
+
+}
