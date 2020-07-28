@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 
 	_ "github.com/denisenkom/go-mssqldb"
@@ -72,12 +73,17 @@ func initDB() (*sql.DB, *sql.Stmt, error) {
 }
 
 func getAllRowsDB(db *sql.DB) []JobDataDB {
+	if db == nil {
+		log.Error("Nil pointer parameter")
+		return nil
+	}
+
 	all := make([]JobDataDB, 0)
 
 	rows, err := db.Query("SELECT * FROM resources")
 	if err != nil {
-		log.Error(err)
-		return all
+		log.Error(fmt.Sprintf("Error in querying DB: %v", err))
+		return nil
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
@@ -107,6 +113,11 @@ func getAllRowsDB(db *sql.DB) []JobDataDB {
 }
 
 func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
+	if db == nil {
+		log.Error("Nil pointer parameter")
+		return nil
+	}
+
 	all := make([]JobDataDB, 0)
 
 	jobID = "'" + jobID + "'"
@@ -115,8 +126,8 @@ func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
 						   WHERE insertTime IN (SELECT MAX(insertTime) FROM resources) AND JobID = ` + jobID + ` 
 						   GROUP BY JobID, name, namespace, dataCenters, insertTime`)
 	if err != nil {
-		log.Error(err)
-		return all
+		log.Error(fmt.Sprintf("Error in querying DB: %v", err))
+		return nil
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
@@ -144,6 +155,11 @@ func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
 }
 
 func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
+	if db == nil {
+		log.Error("Nil pointer parameter")
+		return nil
+	}
+
 	all := make([]JobDataDB, 0)
 
 	jobID = "'" + jobID + "'"
@@ -155,8 +171,8 @@ func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
 						   GROUP BY JobID, name, namespace, dataCenters, insertTime
 						   ORDER BY insertTime DESC`)
 	if err != nil {
-		log.Error(err)
-		return all
+		log.Error(fmt.Sprintf("Error in querying DB: %v", err))
+		return nil
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
