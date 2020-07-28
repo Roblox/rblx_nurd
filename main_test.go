@@ -18,7 +18,7 @@ func TestHomePage(t *testing.T) {
 }
 
 func TestReturnAll(t *testing.T) {
-	request, err := http.NewRequest("GET", "/v1/job", nil)
+	request, err := http.NewRequest("GET", "/v1/jobs", nil)
 	assert.Empty(t, err)
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(returnAll)
@@ -27,7 +27,7 @@ func TestReturnAll(t *testing.T) {
 }
 
 func TestReturnJob(t *testing.T) {
-	request, err := http.NewRequest("GET", "/v1/job/adaas-job", nil)
+	request, err := http.NewRequest("GET", "/v1/job/jobID", nil)
 	assert.Empty(t, err)
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(returnJob)
