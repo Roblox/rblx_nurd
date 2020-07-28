@@ -22,6 +22,10 @@ var (
 )
 
 func homePage(w http.ResponseWriter, r *http.Request) {
+	log.SetLevel(log.TraceLevel)
+	log.SetReportCaller(true)
+	log.Trace(r)
+	
 	fmt.Fprintf(w, "Welcome to NURD.")
 }
 
@@ -30,13 +34,17 @@ func returnAll(w http.ResponseWriter, r *http.Request) {
 	log.SetReportCaller(true)
 	log.Trace(r)
 
-	all := getAllRowsDB(db)
-	json.NewEncoder(w).Encode(all)
+	all, err := getAllRowsDB(db)
+	if err != nil {
+		log.Error(fmt.Sprintf("Error in getting all rows from DB: %v", err))
+	}
+	err = json.NewEncoder(w).Encode(all)
+	if err != nil {
+		log.Error(fmt.Sprintf("Error in encoding JSON: %v", err))
+	}
 }
 
 func returnJob(w http.ResponseWriter, r *http.Request) {
-	var all []JobDataDB
-
 	log.SetLevel(log.TraceLevel)
 	log.SetReportCaller(true)
 	log.Trace(r)
@@ -46,15 +54,27 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 	end, okEnd := r.URL.Query()["end"]
 
 	if !okBegin && !okEnd {
-		all = getLatestJobDB(db, jobID)
-		json.NewEncoder(w).Encode(all)
+		all, err := getLatestJobDB(db, jobID)
+		if err != nil {
+			log.Error(fmt.Sprintf("Error in getting latest job from DB: %v", err))
+		}
+		err = json.NewEncoder(w).Encode(all)
+		if err != nil {
+			log.Error(fmt.Sprintf("Error in encoding JSON: %v", err))
+		}
 	} else if !okBegin && okEnd {
 		fmt.Fprintf(w, "Missing query param: 'begin'")
 	} else if okBegin && !okEnd {
 		fmt.Fprintf(w, "Missing query param: 'end'")
 	} else {
-		all = getTimeSliceDB(db, jobID, begin[0], end[0])
-		json.NewEncoder(w).Encode(all)
+		all, err := getTimeSliceDB(db, jobID, begin[0], end[0])
+		if err != nil {
+			log.Error(fmt.Sprintf("Error in getting latest job from DB: %v", err))
+		}
+		err = json.NewEncoder(w).Encode(all)
+		if err != nil {
+			log.Error(fmt.Sprintf("Error in encoding JSON: %v", err))
+		}
 	}
 }
 

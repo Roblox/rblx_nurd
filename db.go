@@ -6,7 +6,6 @@ import (
 	"os"
 
 	_ "github.com/denisenkom/go-mssqldb"
-	log "github.com/sirupsen/logrus"
 )
 
 type JobDataDB struct {
@@ -72,18 +71,16 @@ func initDB() (*sql.DB, *sql.Stmt, error) {
 	return db, insert, nil
 }
 
-func getAllRowsDB(db *sql.DB) []JobDataDB {
+func getAllRowsDB(db *sql.DB) ([]JobDataDB, error) {
 	if db == nil {
-		log.Error("Nil pointer parameter")
-		return nil
+		return nil, fmt.Errorf("Nil pointer parameter")
 	}
 
 	all := make([]JobDataDB, 0)
 
 	rows, err := db.Query("SELECT * FROM resources")
 	if err != nil {
-		log.Error(fmt.Sprintf("Error in querying DB: %v", err))
-		return nil
+		return nil, fmt.Errorf("Error in querying DB: %v", err)
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
@@ -109,13 +106,12 @@ func getAllRowsDB(db *sql.DB) []JobDataDB {
 		)
 	}
 
-	return all
+	return all, nil
 }
 
-func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
+func getLatestJobDB(db *sql.DB, jobID string) ([]JobDataDB, error) {
 	if db == nil {
-		log.Error("Nil pointer parameter")
-		return nil
+		return nil, fmt.Errorf("Nil pointer parameter")
 	}
 
 	all := make([]JobDataDB, 0)
@@ -126,8 +122,7 @@ func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
 						   WHERE insertTime IN (SELECT MAX(insertTime) FROM resources) AND JobID = ` + jobID + ` 
 						   GROUP BY JobID, name, namespace, dataCenters, insertTime`)
 	if err != nil {
-		log.Error(fmt.Sprintf("Error in querying DB: %v", err))
-		return nil
+		return nil, fmt.Errorf("Error in querying DB: %v", err)
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
@@ -151,13 +146,12 @@ func getLatestJobDB(db *sql.DB, jobID string) []JobDataDB {
 			insertTime})
 	}
 
-	return all
+	return all, nil
 }
 
-func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
+func getTimeSliceDB(db *sql.DB, jobID, begin, end string) ([]JobDataDB, error) {
 	if db == nil {
-		log.Error("Nil pointer parameter")
-		return nil
+		return nil, fmt.Errorf("Nil pointer parameter")
 	}
 
 	all := make([]JobDataDB, 0)
@@ -171,8 +165,7 @@ func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
 						   GROUP BY JobID, name, namespace, dataCenters, insertTime
 						   ORDER BY insertTime DESC`)
 	if err != nil {
-		log.Error(fmt.Sprintf("Error in querying DB: %v", err))
-		return nil
+		return nil, fmt.Errorf("Error in querying DB: %v", err)
 	}
 
 	var JobID, name, namespace, dataCenters, currentTime, insertTime string
@@ -199,5 +192,5 @@ func getTimeSliceDB(db *sql.DB, jobID, begin, end string) []JobDataDB {
 		)
 	}
 
-	return all
+	return all, nil
 }
