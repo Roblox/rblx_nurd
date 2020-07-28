@@ -5,7 +5,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+<<<<<<< HEAD
 	"github.com/DATA-DOG/go-sqlmock"
+=======
+>>>>>>> unit tests for main
 	"github.com/stretchr/testify/assert"
 
 	// "fmt"
@@ -21,6 +24,7 @@ func TestHomePage(t *testing.T) {
 }
 
 func TestReturnAll(t *testing.T) {
+<<<<<<< HEAD
 	var mock sqlmock.Sqlmock
 	var err error
 	db, mock, err = sqlmock.New()
@@ -32,11 +36,15 @@ func TestReturnAll(t *testing.T) {
 	mock.ExpectQuery(`SELECT \* FROM resources`).WillReturnRows(rows)
 
 	request, err := http.NewRequest("GET", "/v1/jobs", nil)
+=======
+	request, err := http.NewRequest("GET", "/v1/job", nil)
+>>>>>>> unit tests for main
 	assert.Empty(t, err)
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(returnAll)
 	handler.ServeHTTP(rr, request)
 	assert.Equal(t, http.StatusOK, rr.Code)
+<<<<<<< HEAD
 
 	// fmt.Println("Result:", rr.Body)
 
@@ -58,9 +66,19 @@ func TestReturnAll(t *testing.T) {
 
 func TestReturnJob(t *testing.T) {
 	request, err := http.NewRequest("GET", "/v1/job/jobID", nil)
+=======
+}
+
+func TestReturnJob(t *testing.T) {
+	request, err := http.NewRequest("GET", "/v1/job/adaas-job", nil)
+>>>>>>> unit tests for main
 	assert.Empty(t, err)
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(returnJob)
 	handler.ServeHTTP(rr, request)
 	assert.Equal(t, http.StatusOK, rr.Code)
+<<<<<<< HEAD
+=======
+
+>>>>>>> unit tests for main
 }
