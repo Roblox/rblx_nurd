@@ -27,7 +27,7 @@ type JobDataDB struct {
 func initDB() (*sql.DB, *sql.Stmt, error) {
 	db, err := sql.Open("mssql", os.Getenv("CONNECTION_STRING"))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("Error in opening DB: %v", err)
 	}
 
 	createTable, err := db.Prepare(`if not exists (select * from sysobjects where name='resources' and xtype='U')
@@ -47,7 +47,7 @@ func initDB() (*sql.DB, *sql.Stmt, error) {
 		date DATETIME,
 		insertTime DATETIME);`)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("Error in creating DB table: %v", err)
 	}
 	createTable.Exec()
 
@@ -65,7 +65,7 @@ func initDB() (*sql.DB, *sql.Stmt, error) {
 		date,
 		insertTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("Error in preparing DB insert: %v", err)
 	}
 
 	return db, insert, nil
