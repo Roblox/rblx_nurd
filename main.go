@@ -82,9 +82,9 @@ func collectData() {
 	log.SetReportCaller(true)
 	log.SetLevel(log.TraceLevel)
 
-	err := loadConfig("config.json")
+	err := loadConfig("etc/nurd/config.json")
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Error in loading config file: %v", err))
+		log.Fatal(fmt.Sprintf("Error in loading etc/nurd/config.json: %v", err))
 	}
 
 	db, insert, err = initDB()
@@ -140,8 +140,8 @@ func reloadConfig(sigs chan os.Signal) {
 		select {
 		case <-sigs:
 			log.Info("Reloading config file")
-			if err := loadConfig("config.json"); err != nil {
-				log.Warning(fmt.Sprintf("Error in reloading config file %v:", err))
+			if err := loadConfig("etc/nurd/config.json"); err != nil {
+				log.Warning(fmt.Sprintf("Error in reloading etc/nurd/config.json: %v", err))
 			}
 		default:
 		}
