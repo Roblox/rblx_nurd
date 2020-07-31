@@ -12,9 +12,10 @@ build:
 install:
 	mkdir -p $(SYSCONFDIR)
 
-	if [ ! -f "$(SYSCONFDIR)/config.json" ]; then						\
-		install -m 644 etc/nurd/config.json $(SYSCONFDIR)/config.json;	\
+	if [ ! -f "$(SYSCONFDIR)/config.json" ]; then \
+		install -m 644 etc/nurd/config.json $(SYSCONFDIR)/config.json; \
 	fi
+
 
 	$(GOLANG) build -o $(BINARY) cluster.go config.go db.go main.go
 	install -m 755 $(BINARY) $(BINDIR)
