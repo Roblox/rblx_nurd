@@ -1,0 +1,12 @@
+{
+    "VictoriaMetrics": {
+        "URL": "***REMOVED***", 
+        "Port": "***REMOVED***"
+    },
+    "Nomad": [
+        {
+            "URL": "***REMOVED***",
+            "Port": "***REMOVED***" 
+        }
+    ]
+}
