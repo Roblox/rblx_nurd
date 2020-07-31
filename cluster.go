@@ -110,12 +110,12 @@ type Alloc struct {
 	TaskGroup string
 }
 
-func getPromAllocs(clusterAddress, query string) map[string]struct{} {
+func getPromAllocs(metricsAddress, query string) map[string]struct{} {
 	m := make(map[string]struct{})
 
 	log.SetReportCaller(true)
 
-	api := "http://" + clusterAddress + "/api/v1/query?query=" + query
+	api := "http://" + metricsAddress + "/api/v1/query?query=" + query
 	response, err := http.Get(api)
 	if err != nil {
 		log.Error(fmt.Sprintf("Error in getting API response: %v", err))
