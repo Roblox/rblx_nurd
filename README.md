@@ -28,7 +28,10 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
         }
 3. `$ cd nurd`
 4. `$ docker-compose build`
-5. `$ docker-compose up`
+5. `$ docker-compose up -d`
+
+## Exit
+1. `$ docker-compose down`
 
 ## Usage
 From `localhost:8080`, or an alternative NURD host address, the user can access several endpoints:
