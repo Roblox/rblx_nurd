@@ -4,7 +4,7 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 ## Prerequisites
 * At least one active Nomad server
 * **Recommended:** A VictoriaMetrics server containing allocation level resource statistics
-* Docker installed
+* Docker Version: 19.03.8+
 
 ## Setup
 1. `$ git clone git@github.com:Roblox/nurd.git`
