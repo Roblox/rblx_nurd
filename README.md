@@ -4,10 +4,14 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 ## Prerequisites
 * At least one active Nomad server
 * **Recommended:** A VictoriaMetrics server containing allocation level resource statistics
+* Docker Version: 19.03.8+
 
 ## Setup
-1. **Configuration File**<br>
-    a. **etc/nurd/config.json**<br>
+1. `$ git clone git@github.com:Roblox/nurd.git`
+2. **Configuration**<br>
+    a. **docker-compose.yml**<br>
+        This file contains the necessary login information to create a SQL Server instance. It is necessary to replace the default system administrator password with the correct one.<br>
+    b. **etc/nurd/config.json**<br>
         This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default installation contains server addresses for Alpha. Note, any amount of servers can be added to the `Nomad` array.
 
         {
@@ -22,10 +26,12 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
                 }
             ]
         }
-2. `$ git clone git@github.com:Roblox/nurd.git`
 3. `$ cd nurd`
-4. `$ make install`
-5. `$ nurd`
+4. `$ docker-compose build`
+5. `$ docker-compose up -d`
+
+## Exit
+1. `$ docker-compose down`
 
 ## Usage
 From `localhost:8080`, or an alternative NURD host address, the user can access several endpoints:

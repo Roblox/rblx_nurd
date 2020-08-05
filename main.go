@@ -87,14 +87,21 @@ func collectData() {
 		log.Fatal(fmt.Sprintf("Error in loading /etc/nurd/config.json: %v", err))
 	}
 
-	db, insert, err = initDB()
-	if err != nil {
-		log.Fatal(fmt.Sprintf("Error in initializing DB: %v", err))
-	}
+	// Retry loading config 5 times before exiting
+	for i := 0; i < 5; i++ {
+		db, insert, err = initDB()
+		if err != nil {
+			log.Warning(fmt.Sprintf("DB initialization failed, retrying: %v", err))
+		} else {
+			log.Info("DB initialized successfully, break ...")
+			break
+		}
 
-	duration, err := time.ParseDuration("1m")
-	if err != nil {
-		log.Error(fmt.Sprintf("Error in parsing duration: %v", err))
+		if i == 4 {
+			log.Fatal(fmt.Sprintf("Error in initializing DB: %v", err))
+		}
+
+		time.Sleep(5 * time.Second)
 	}
 
 	for {
@@ -129,7 +136,7 @@ func collectData() {
 		}
 
 		log.Trace("END AGGREGATION")
-		time.Sleep(duration)
+		time.Sleep(1 * time.Minute)
 	}
 }
 
