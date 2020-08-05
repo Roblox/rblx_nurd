@@ -87,13 +87,17 @@ func collectData() {
 		log.Fatal(fmt.Sprintf("Error in loading /etc/nurd/config.json: %v", err))
 	}
 
-	for {
+	for i := 0; i < 10; i++ {
 		db, insert, err = initDB()
 		if err == nil {
 			break
 		}
-		log.Warning(fmt.Sprintf("Waiting to initialize DB: %v", err))
 
+		if i == 9 {
+			log.Fatal(fmt.Sprintf("Error in initializing DB: %v", err))
+		}
+
+		log.Warning(fmt.Sprintf("Waiting to initialize DB: %v", err))
 		duration, err := time.ParseDuration("5s")
 		if err != nil {
 			log.Error(fmt.Sprintf("Error in parsing duration: %v", err))
