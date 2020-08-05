@@ -10,7 +10,7 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 1. `$ git clone git@github.com:Roblox/nurd.git`
 2. **Configuration**<br>
     a. **docker-compose.yml**<br>
-        This file contains the necessary login information to create a SQL Server instance. It is necessary to replace the default system administrator password with the correct one. 
+        This file contains the necessary login information to create a SQL Server instance. It is necessary to replace the default system administrator password with the correct one.<br>
     b. **etc/nurd/config.json**<br>
         This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default installation contains server addresses for Alpha. Note, any amount of servers can be added to the `Nomad` array.
 
