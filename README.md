@@ -1,4 +1,4 @@
-# <img src="NURD.png" width="30" height="40" alt=":NURD:" class="emoji" title=":NURD:"/> Nomad Usage Resource Dashboard (NURD)
+# <img src="NURD.png" width="33" height="44" alt=":NURD:" class="emoji" title=":NURD:"/> Nomad Usage Resource Dashboard (NURD)
 NURD is a dashboard which aggregates and displays CPU and memory resource usage for each job running through specified Hashicorp Nomad servers. The dashboard also displays resources requested by each job, which can be used with resource usage to calculate waste and aid capacity planning. 
 
 ## Prerequisites
@@ -79,5 +79,7 @@ Lists the latest recorded job data for the specified job_id.<br>
         ```
 ### Reload Config File
 The user can reload the config file without restarting NURD by sending a SIGHUP signal.<br>
+
 `$ kill -S HUP <PID>`<br>
+
 Once the config file has been reloaded and SIGHUP has been sent to NURD, NURD will complete resource aggregation of the addresses in the previous config file before aggregating on the new addresses. 
