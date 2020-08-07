@@ -164,7 +164,7 @@ Lists the latest recorded job data for the specified job_id.<br>
                 "RdiskMB":900,
                 "RIOPS":0,
                 "Namespace":"default",
-                "DataCenters":"alpha,alpha_test",
+                "DataCenters":"DC0,DC1",
                 "CurrentTime":"",
                 "InsertTime":"2020-07-07T11:49:34Z"
             }
