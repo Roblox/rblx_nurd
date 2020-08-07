@@ -15,7 +15,6 @@ The user can configure NURD to connect to a containerized SQL Server instance wi
     a. **docker-compose.yml**<br>
         This file contains the necessary login information to create a SQL Server instance. It is necessary to configure the system administrator password and the connection string.
 
-        ```
         version: "3.7"
 
         services:
@@ -32,7 +31,6 @@ The user can configure NURD to connect to a containerized SQL Server instance wi
             environment:
             ACCEPT_EULA: Y
             SA_PASSWORD: myPassword
-        ```
     b. **etc/nurd/config.json**<br>
         This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default installation contains server addresses for Alpha. Note, any amount of servers can be added to the `Nomad` array.
 
@@ -76,7 +74,6 @@ The user can configure NURD to connect to a containerized SQL Server instance wi
     a. **Dockerfile**<br>
         This file contains the necessary login information to connect to a separate SQL Server instance. It is necessary to configure the connection string environment variable.
 
-        ```
         FROM golang:latest
 
         LABEL maintainer="Austin Mac <amac@roblox.com>"
@@ -96,7 +93,6 @@ The user can configure NURD to connect to a containerized SQL Server instance wi
         EXPOSE 8080
 
         CMD ["nurd"]
-        ```
     b. **etc/nurd/config.json**<br>
         This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default installation contains server addresses for Alpha. Note, any amount of servers can be added to the `Nomad` array.
 
