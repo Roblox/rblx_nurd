@@ -12,40 +12,10 @@ The user can configure NURD to connect to a containerized SQL Server instance wi
 ### Containerized SQL Server Instance
 1. `$ git clone git@github.com:Roblox/nurd.git`
 2. **Configuration**<br>
-    a. **docker-compose.yml**<br>
-        This file contains the necessary login information to create a SQL Server instance. It is necessary to configure the system administrator password and the connection string.
-
-        version: "3.7"
-
-        services:
-        nurd:
-            build: .
-            ports: 
-            - 8080:8080
-            environment:
-            CONNECTION_STRING: Server=myServerAddress;Database=myDataBase;User Id=myUsername;Password=myPassword;
-        mssql:
-            image: microsoft/mssql-server-linux
-            ports:
-            - 1433:1433
-            environment:
-            ACCEPT_EULA: Y
-            SA_PASSWORD: myPassword
-    b. **etc/nurd/config.json**<br>
+    a. **[docker-compose.yml](https://github.com/Roblox/nurd/blob/master/docker-compose.yml)**<br>
+        This file contains the necessary login information to create a SQL Server instance. It is necessary to configure the system administrator password and the connection string.<br>
+    b. **[etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)**<br>
         This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default installation contains server addresses for Alpha. Note, any amount of servers can be added to the `Nomad` array.
-
-        {
-            "VictoriaMetrics": {
-                "URL":      URL for VictoriaMetrics server, 
-                "Port":     Port for VictoriaMetrics server
-            },
-            "Nomad": [
-                {
-                    "URL":      URL for Nomad server, 
-                    "Port":     Port for Nomad server
-                }
-            ]
-        }
 3. `$ cd nurd`
 4. `$ docker-compose build`
 5. `$ docker-compose up -d`
@@ -71,43 +41,10 @@ The user can configure NURD to connect to a containerized SQL Server instance wi
 ### Another SQL Server Instance
 1. `$ git clone git@github.com:Roblox/nurd.git`
 2. **Configuration**<br>
-    a. **Dockerfile**<br>
-        This file contains the necessary login information to connect to a separate SQL Server instance. It is necessary to configure the connection string environment variable.
-
-        FROM golang:latest
-
-        LABEL maintainer="Austin Mac <amac@roblox.com>"
-
-        ENV CONNECTION_STRING="Server=myServerAddress;Database=myDataBase;User Id=myUsername;Password=myPassword;"
-
-        RUN mkdir -p /go/src/nurd
-
-        WORKDIR /go/src/nurd
-
-        COPY . .
-
-        RUN go mod download
-
-        RUN make install
-
-        EXPOSE 8080
-
-        CMD ["nurd"]
-    b. **etc/nurd/config.json**<br>
+    a. **[Dockerfile](https://github.com/Roblox/nurd/blob/master/Dockerfile)**<br>
+        This file contains the necessary login information to connect to a separate SQL Server instance. It is necessary to configure the connection string environment variable.<br>
+    b. **[etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)**<br>
         This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default installation contains server addresses for Alpha. Note, any amount of servers can be added to the `Nomad` array.
-
-        {
-            "VictoriaMetrics": {
-                "URL":      URL for VictoriaMetrics server, 
-                "Port":     Port for VictoriaMetrics server
-            },
-            "Nomad": [
-                {
-                    "URL":      URL for Nomad server, 
-                    "Port":     Port for Nomad server
-                }
-            ]
-        }
 3. `$ cd nurd`
 4. `$ docker build -t nurd .`
 5. `$ docker run -dp 8080:8080 nurd`
