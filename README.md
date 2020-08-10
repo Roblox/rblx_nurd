@@ -30,13 +30,13 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 4. `$ docker-compose build`
 5. `$ docker-compose up -d`
 6. **Grafana**<br>
-    a. Navigate to <localhost:3000><br>
+    a. Navigate to [localhost:3000](http://localhost:3000)<br>
     b. Login with
         
         username: admin
         password: admin
     c. Change the password<br>
-    d. Navigate to <localhost:3000/datasources/new> and select `Microsoft SQL Server`<br>
+    d. Navigate to [localhost:3000/datasources/new](http://localhost:3000/datasources/new) and select `Microsoft SQL Server`<br>
     e. Input the following connection data
 
         Host: mssql
@@ -44,7 +44,7 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
         User: sa
         Password: yourStrong(!)Password
     f. Select `Save & Test`<br>
-    g. Navigate to <localhost:3000/dashboard/import> and select `Upload JSON file`<br>
+    g. Navigate to [localhost:3000/dashboard/import](http://localhost:3000/dashboard/import) and select `Upload JSON file`<br>
     h. Upload `grafana.json` and select `import`<br>
 
 
@@ -53,16 +53,16 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 
 ## Usage
 ### Dashboard
-From `localhost:3000`, or an alternative NURD host address, the user can access the Grafana dashboard. The following parameters are available to query through the dropdown menu:<br>
-* JobID
-* Used Memory (in MiB)
-* Requested Memory (in MiB)
-* Used CPU (in MHz) 
-* Requested CPU (in MHz) 
+From [localhost:3000](http://localhost:3000), or an alternative NURD host address, the user can access the Grafana dashboard. The following parameters are available to query through the dropdown menu:<br>
+* `JobID`
+* `UsedMemory` in MiB
+* `RequestedMemory` in MiB
+* `UsedCPU` in MHz
+* `RequestedCPU` in MHz<br>
 The user can also aggregate accross the selected query by checking the value by `Total`.
 
 ### API
-From `localhost:8080`, or an alternative NURD host address, the user can access several endpoints:
+From [localhost:8080](http://localhost:8080), or an alternative NURD host address, the user can access several endpoints:
 
 #### Home Page
 * **`/`**<br>
