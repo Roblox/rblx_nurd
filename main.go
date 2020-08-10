@@ -163,7 +163,7 @@ func reloadConfig(sigs chan os.Signal) {
 	for {
 		select {
 		case <-sigs:
-			log.Info("Reloading config file")
+			log.Info("Reloading /etc/nurd/config.json")
 			if err := loadConfig("/etc/nurd/config.json"); err != nil {
 				log.Warning(fmt.Sprintf("Error in reloading /etc/nurd/config.json: %v", err))
 			}
