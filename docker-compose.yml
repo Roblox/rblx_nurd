@@ -14,5 +14,9 @@ services:
     environment:
       ACCEPT_EULA: Y
       SA_PASSWORD: yourStrong(!)Password
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
 
 
