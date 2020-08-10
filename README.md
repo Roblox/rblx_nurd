@@ -12,9 +12,9 @@ The user can configure NURD to connect to a containerized SQL Server instance wi
 ### Containerized SQL Server Instance
 1. `$ git clone git@github.com:Roblox/nurd.git`
 2. **Configuration**<br>
-    * **[docker-compose.yml](https://github.com/Roblox/nurd/blob/master/docker-compose.yml)**
+    * **[docker-compose.yml](https://github.com/Roblox/nurd/blob/master/docker-compose.yml)**<br>
         This file contains the necessary login information to create a SQL Server instance. It is necessary to configure the system administrator password and the connection string.
-    * **[etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)**
+    * **[etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)**<br>
         This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default installation contains server addresses for Alpha. Note, any amount of servers can be added to the `Nomad` array.
 3. `$ cd nurd`
 4. `$ docker-compose build`
@@ -41,9 +41,9 @@ The user can configure NURD to connect to a containerized SQL Server instance wi
 ### Another SQL Server Instance
 1. `$ git clone git@github.com:Roblox/nurd.git`
 2. **Configuration**<br>
-    * **[Dockerfile](https://github.com/Roblox/nurd/blob/master/Dockerfile)**
+    * **[Dockerfile](https://github.com/Roblox/nurd/blob/master/Dockerfile)**<br>
         This file contains the necessary login information to connect to a separate SQL Server instance. It is necessary to configure the connection string environment variable.
-    * **[etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)**
+    * **[etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)**<br>
         This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default installation contains server addresses for Alpha. Note, any amount of servers can be added to the `Nomad` array.
 3. `$ cd nurd`
 4. `$ docker build -t nurd .`
