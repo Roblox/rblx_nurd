@@ -6,7 +6,7 @@ services:
     ports: 
       - 8080:8080
     environment:
-      CONNECTION_STRING: Server=myServerAddress;Database=myDataBase;User Id=myUsername;Password=myPassword;
+      CONNECTION_STRING: Server=mssql;Database=master;User Id=sa;Password=yourStrong(!)Password;
   mssql:
     image: microsoft/mssql-server-linux
     ports:
@@ -14,7 +14,7 @@ services:
     environment:
       ACCEPT_EULA: Y
       SA_PASSWORD: yourStrong(!)Password
-  grafana:
+grafana:
     image: grafana/grafana:latest
     ports:
       - 3000:3000
