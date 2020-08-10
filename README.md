@@ -29,7 +29,7 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 3. `$ cd nurd`
 4. `$ docker-compose build`
 5. `$ docker-compose up -d`
-6. **Grafana**<br>
+6. **Grafana Dashboard**<br>
     a. Navigate to [localhost:3000](http://localhost:3000)<br>
     b. Login with
         
@@ -52,14 +52,15 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 1. `$ docker-compose down`
 
 ## Usage
-### Dashboard
+### Grafana Dashboard
 From [localhost:3000](http://localhost:3000), or an alternative NURD host address, the user can access the Grafana dashboard. The following parameters are available to query through the dropdown menu:<br>
-* `JobID`
-* `UsedMemory` in MiB
-* `RequestedMemory` in MiB
-* `UsedCPU` in MHz
-* `RequestedCPU` in MHz<br>
-The user can also aggregate accross the selected query by checking the value by `Total`.
+* `JobID`: ID of a job
+* Metrics
+    * `UsedMemory`: the memory currently in use by the selected jobs in MiB
+    * `RequestedMemory`: the memory requested by the selected jobs in MiB
+    * `UsedCPU`: the CPU currently in use by the selected jobs in MHz
+    * `RequestedCPU`: the CPU requested by the selected jobs in MHz
+* `Total`: toggle to aggregate metrics over the current selection
 
 ### API
 From [localhost:8080](http://localhost:8080), or an alternative NURD host address, the user can access several endpoints:
