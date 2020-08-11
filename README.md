@@ -53,7 +53,7 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 
 ## Usage
 ### Grafana Dashboard
-From [localhost:3000](http://localhost:3000), or an alternative NURD host address, the user can access the Grafana dashboard. The following parameters are available to query through the dropdown menu:<br>
+From [localhost:3000](http://localhost:3000), or an alternative NURD host address, the user can access the Grafana dashboard. Note, no time series will display until NURD has inserted data into the database. The following parameters are available to query through the dropdown menu:<br>
 * `JobID`: ID of a job
 * `Metrics`
     * `UsedMemory`: the memory currently in use by the selected jobs in MiB
