@@ -7,6 +7,8 @@ services:
       - 8080:8080
     environment:
       CONNECTION_STRING: Server=mssql;Database=master;User Id=sa;Password=yourStrong(!)Password;
+    volumes:
+        - ./etc/nurd/config.json:/etc/nurd/config.json
   mssql:
     image: microsoft/mssql-server-linux
     ports:
@@ -18,5 +20,3 @@ services:
     image: grafana/grafana:latest
     ports:
       - 3000:3000
-
-
