@@ -113,7 +113,7 @@ NURD supports hot reloading to point NURD to different Nomad clusters and/or a V
     `$ docker exec -it nurd /bin/bash`
 2. Edit the contents of [/etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)<br>
     `$ vim /etc/nurd/config.json`
-3. Exit the container
+3. Exit the container<br>
     `$ exit`
 3. Send a SIGHUP signal to the container running NURD.<br>
     `$ docker kill --signal=HUP nurd`
