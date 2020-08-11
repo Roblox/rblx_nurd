@@ -107,8 +107,13 @@ Lists the latest recorded job data for the specified job_id.<br>
         ]
         ```
 #### Reload Config File
-The user can reload the config file without restarting NURD by sending a SIGHUP signal.<br>
+NURD supports hot reloading to point NURD to different Nomad clusters and/or a VictoriaMetrics server.
 
-`$ kill -S HUP <PID>`<br>
+1. `Exec` into the container running NURD<br>
+    `docker exec -it nurd_nurd_1 /bin/bash`
+2. Edit the contents of [/etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)<br>
+    `vim /etc/nurd/config.json`
+3. Send a SIGHUP signal to the container running NURD.<br>
+    `$ docker kill --signal=HUP nurd_nurd_1`
 
-Once the config file has been reloaded and SIGHUP has been sent to NURD, NURD will complete resource aggregation of the addresses in the previous config file before aggregating on the new addresses. 
+Once SIGHUP has been sent to NURD, NURD will complete resource aggregation of the addresses in the previous cycle before aggregating on the new addresses. 

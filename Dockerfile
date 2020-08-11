@@ -10,6 +10,8 @@ WORKDIR /go/src/nurd
 
 COPY . .
 
+RUN apt-get update
+RUN apt-get install -y vim
 RUN go mod download
 
 RUN make install
