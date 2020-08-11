@@ -2,31 +2,20 @@
 NURD is a dashboard which aggregates and displays CPU and memory resource usage for each job running through specified Hashicorp Nomad servers. The dashboard also displays resources requested by each job, which can be used with resource usage to calculate waste and aid capacity planning. 
 
 ## Prerequisites
+* Docker Version: 19.03.8+
 * At least one active Nomad server
 * **Recommended:** A VictoriaMetrics server containing allocation level resource statistics
-* Docker Version: 19.03.8+
 
 ## Setup
+The user can configure NURD to connect to a containerized SQL Server instance with [docker-compose.yml](https://github.com/Roblox/nurd/blob/master/docker-compose.yml) or point to another SQL Server instance with [Dockerfile](https://github.com/Roblox/nurd/blob/master/Dockerfile). See options below for details. 
+
+### Containerized SQL Server Instance
 1. `$ git clone git@github.com:Roblox/nurd.git`
 2. **Configuration**<br>
-    a. **docker-compose.yml**<br>
-        This file contains the necessary login information to create a SQL Server instance. It is necessary to replace the default system administrator password with the correct one.<br>
-    b. **etc/nurd/config.json**<br>
-        This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default installation contains server addresses for Alpha. Note, any amount of servers can be added to the `Nomad` array.
-
-        {
-            "VictoriaMetrics": {
-                "URL":      URL for VictoriaMetrics server, 
-                "Port":     Port for VictoriaMetrics server
-            },
-            "Nomad": [
-                {
-                    "URL":      URL for Nomad server, 
-                    "Port":     Port for Nomad server
-                }
-            ]
-        }
-3. `$ cd nurd`
+    * **[docker-compose.yml](https://github.com/Roblox/nurd/blob/master/docker-compose.yml)**<br>
+        This file contains the necessary login information to create a SQL Server instance.
+    * **[etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)**<br>
+        This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default URLs and ports must be overwritten. If no VictoriaMetrics server exists, the VictoriaMetrics stanza must be removed. Note, any amount of servers can be added to the `Nomad` array.
 4. `$ docker-compose build`
 5. `$ docker-compose up -d`
 6. **Grafana Dashboard**<br>
@@ -48,12 +37,23 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
     h. Upload [grafana.json](https://github.com/Roblox/nurd/blob/master/grafana.json) and select `import`<br>
 
 
+### Another SQL Server Instance
+1. `$ git clone git@github.com:Roblox/nurd.git`
+2. **Configuration**<br>
+    * **[Dockerfile](https://github.com/Roblox/nurd/blob/master/Dockerfile)**<br>
+        This file contains the necessary login information to connect to a separate SQL Server instance. It is necessary to configure the [connection string](https://github.com/Roblox/nurd/blob/master/Dockerfile#L5)  environment variable.
+    * **[etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)**<br>
+        This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default URLs and ports must be overwritten. If no VictoriaMetrics server exists, the VictoriaMetrics stanza must be removed. Note, any amount of servers can be added to the `Nomad` array.
+3. `$ cd nurd`
+4. `$ docker build -t nurd .`
+5. `$ docker run -dp 8080:8080 nurd`
+
 ## Exit
-1. `$ docker-compose down`
+1. `$ docker-compose down` __or__ `$ docker stop`
 
 ## Usage
 ### Grafana Dashboard
-From [localhost:3000](http://localhost:3000), or an alternative NURD host address, the user can access the Grafana dashboard. Note, no time series will display until NURD has inserted data into the database. The following parameters are available to query through the dropdown menu:<br>
+From [localhost:3000](http://localhost:3000), or an alternative NURD host address, the user can access the Grafana dashboard. No time series will display until NURD has inserted data into the database. The following parameters are available to query through the dropdown menu:<br>
 * `JobID`: ID of a job
 * `Metrics`
     * `UsedMemory`: the memory currently in use by the selected jobs in MiB
@@ -75,7 +75,7 @@ The home page for NURD.
 * **`/v1/jobs`**<br>
 Lists all job data in NURD.
     * **Sample Request**<br>
-    `http://localhost:8080/jobs`
+    `http://localhost:8080/v1/jobs`
 
 #### List Specified Job(s)
 * **`/v1/job/:job_id`**<br>
@@ -100,7 +100,7 @@ Lists the latest recorded job data for the specified job_id.<br>
                 "RdiskMB":900,
                 "RIOPS":0,
                 "Namespace":"default",
-                "DataCenters":"alpha,alpha_test",
+                "DataCenters":"DC0,DC1",
                 "CurrentTime":"",
                 "InsertTime":"2020-07-07T11:49:34Z"
             }
