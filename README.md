@@ -106,7 +106,7 @@ Lists the latest recorded job data for the specified job_id.<br>
             }
         ]
         ```
-#### Reload Config File
+### Reload Config File
 NURD supports hot reloading to point NURD to different Nomad clusters and/or a VictoriaMetrics server.
 
 1. `Exec` into the container running NURD<br>
