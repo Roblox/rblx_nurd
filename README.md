@@ -45,7 +45,7 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
         Password: yourStrong(!)Password
     f. Select `Save & Test`<br>
     g. Navigate to [localhost:3000/dashboard/import](http://localhost:3000/dashboard/import) and select `Upload JSON file`<br>
-    h. Upload `grafana.json` and select `import`<br>
+    h. Upload [grafana.json](https://github.com/Roblox/nurd/blob/master/grafana.json) and select `import`<br>
 
 
 ## Exit
