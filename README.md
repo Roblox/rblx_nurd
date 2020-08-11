@@ -110,10 +110,12 @@ Lists the latest recorded job data for the specified job_id.<br>
 NURD supports hot reloading to point NURD to different Nomad clusters and/or a VictoriaMetrics server.
 
 1. `Exec` into the container running NURD<br>
-    `docker exec -it nurd_nurd_1 /bin/bash`
+    `$ docker exec -it nurd /bin/bash`
 2. Edit the contents of [/etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)<br>
-    `vim /etc/nurd/config.json`
+    `$ vim /etc/nurd/config.json`
+3. Exit the container
+    `$ exit`
 3. Send a SIGHUP signal to the container running NURD.<br>
-    `$ docker kill --signal=HUP nurd_nurd_1`
+    `$ docker kill --signal=HUP nurd`
 
 Once SIGHUP has been sent to NURD, NURD will complete resource aggregation of the addresses in the previous cycle before aggregating on the new addresses. 
