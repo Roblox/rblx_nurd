@@ -29,26 +29,55 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 3. `$ cd nurd`
 4. `$ docker-compose build`
 5. `$ docker-compose up -d`
+6. **Grafana Dashboard**<br>
+    a. Navigate to [localhost:3000](http://localhost:3000)<br>
+    b. Login with
+        
+        username: admin
+        password: admin
+    c. Change the password<br>
+    d. Navigate to [localhost:3000/datasources/new](http://localhost:3000/datasources/new) and select `Microsoft SQL Server`<br>
+    e. Input the following connection data
+
+        Host: mssql
+        Database: master
+        User: sa
+        Password: yourStrong(!)Password
+    f. Select `Save & Test`<br>
+    g. Navigate to [localhost:3000/dashboard/import](http://localhost:3000/dashboard/import) and select `Upload JSON file`<br>
+    h. Upload [grafana.json](https://github.com/Roblox/nurd/blob/master/grafana.json) and select `import`<br>
+
 
 ## Exit
 1. `$ docker-compose down`
 
 ## Usage
-From `localhost:8080`, or an alternative NURD host address, the user can access several endpoints:
+### Grafana Dashboard
+From [localhost:3000](http://localhost:3000), or an alternative NURD host address, the user can access the Grafana dashboard. Note, no time series will display until NURD has inserted data into the database. The following parameters are available to query through the dropdown menu:<br>
+* `JobID`: ID of a job
+* `Metrics`
+    * `UsedMemory`: the memory currently in use by the selected jobs in MiB
+    * `RequestedMemory`: the memory requested by the selected jobs in MiB
+    * `UsedCPU`: the CPU currently in use by the selected jobs in MHz
+    * `RequestedCPU`: the CPU requested by the selected jobs in MHz
+* `Total`: toggle to aggregate metrics over the current selection
 
-### Home Page
+### API
+From [localhost:8080](http://localhost:8080), or an alternative NURD host address, the user can access several endpoints:
+
+#### Home Page
 * **`/`**<br>
 The home page for NURD.
     * **Sample Request**<br>
     `http://localhost:8080/`
 
-### List All Jobs
+#### List All Jobs
 * **`/v1/jobs`**<br>
 Lists all job data in NURD.
     * **Sample Request**<br>
     `http://localhost:8080/jobs`
 
-### List Specified Job(s)
+#### List Specified Job(s)
 * **`/v1/job/:job_id`**<br>
 Lists the latest recorded job data for the specified job_id.<br>
 **Optional Parameters**<br>
@@ -77,7 +106,7 @@ Lists the latest recorded job data for the specified job_id.<br>
             }
         ]
         ```
-### Reload Config File
+#### Reload Config File
 The user can reload the config file without restarting NURD by sending a SIGHUP signal.<br>
 
 `$ kill -S HUP <PID>`<br>
