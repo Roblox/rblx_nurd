@@ -15,9 +15,9 @@ services:
     environment:
       ACCEPT_EULA: Y
       SA_PASSWORD: yourStrong(!)Password
-    container_name: mssql
+    container_name: nurd_mssql
   grafana:
     image: grafana/grafana:latest
     ports:
       - 3000:3000
-    container_name: grafana
+    container_name: nurd_grafana
