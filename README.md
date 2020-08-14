@@ -4,9 +4,9 @@
 NURD is a dashboard which aggregates and displays CPU and memory resource usage for each job running through specified Hashicorp Nomad servers. The dashboard also displays resources requested by each job, which can be used with resource usage to calculate waste and aid capacity planning. 
 
 ## Prerequisites
-* Docker Version: 19.03.8+
-* At least one active Nomad server
-* **Recommended:** A VictoriaMetrics server containing allocation level resource statistics
+* Docker Version: >=19.03.8+
+* **Required:** At least one active Nomad server
+* **Optional:** A VictoriaMetrics server containing allocation level resource statistics
 
 ## Setup
 The user can configure NURD to connect to a containerized SQL Server instance with [docker-compose.yml](https://github.com/Roblox/nurd/blob/master/docker-compose.yml) or point to another SQL Server instance with [Dockerfile](https://github.com/Roblox/nurd/blob/master/Dockerfile). See options below for details. 
@@ -55,7 +55,8 @@ The user can configure NURD to connect to a containerized SQL Server instance wi
 
 ## Usage
 ### Grafana Dashboard
-From [localhost:3000](http://localhost:3000), or an alternative NURD host address, the user can access the Grafana dashboard. No time series will display until NURD has inserted data into the database. The following parameters are available to query through the dropdown menu:<br>
+From [localhost:3000](http://localhost:3000), or an alternative NURD host address, the user can access the Grafana dashboard. The following parameters are available to query through the dropdown menu.<br>
+**Note:** No time series will display until NURD has inserted data into the database.<br>
 * `JobID`: ID of a job
 * `Metrics`
     * `UsedMemory`: the memory currently in use by the selected jobs in MiB
