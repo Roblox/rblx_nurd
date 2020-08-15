@@ -1,4 +1,4 @@
-# <img src="NURD.png" width="33" height="44" alt=":NURD:" class="emoji" title=":NURD:"/> Nomad Usage Resource Dashboard (NURD)
+# <img src="NURD.png" width="60" height="80" alt=":NURD:" class="emoji" title=":NURD:"/> Nomad Usage Resource Dashboard (NURD)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Roblox/nurd/blob/master/LICENSE)
 
 NURD is a dashboard which aggregates and displays CPU and memory resource usage for each job running through specified Hashicorp Nomad servers. The dashboard also displays resources requested by each job, which can be used with resource usage to calculate waste and aid capacity planning. 
