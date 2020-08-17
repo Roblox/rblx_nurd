@@ -21,7 +21,7 @@ install:
 	install -m 755 $(BINARY) $(BINDIR)
 
 test:
-	$(GOLANG) test -count=1 -v ./...
+	./run_tests.sh
 
 clean:
 	rm -f $(BINARY)
