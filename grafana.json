@@ -68,7 +68,7 @@
           {
             "alias": "",
             "format": "time_series",
-            "rawSql": "SELECT \n  ${Total:raw} ${Metric:csv}, insertTime AS time \nFROM \n  resources\nWHERE \n  JobID IN (${JobID})\nGROUP BY\n  ${Total:raw} insertTime\nORDER BY insertTime;",
+            "rawSql": "SELECT \n  ${Total:raw} ${Metric:csv}, insertTime AS time \nFROM \n  resources\nWHERE \n  JobID IN (${JobID} '')\nGROUP BY\n  ${Total:raw} insertTime\nORDER BY insertTime;",
             "refId": "A"
           }
         ],
