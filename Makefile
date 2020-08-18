@@ -21,7 +21,7 @@ install:
 	install -m 755 $(BINARY) $(BINDIR)
 
 test:
-	./run_tests.sh
+	chmod +x ./run_tests.sh
 
 clean:
 	rm -f $(BINARY)
