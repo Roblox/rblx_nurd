@@ -127,7 +127,7 @@ type Alloc struct {
 	TaskGroup string
 }
 
-func getPromAllocs(metricsAddress, query string) map[string]struct{} {
+func getVMAllocs(metricsAddress, query string) map[string]struct{} {
 	m := make(map[string]struct{})
 
 	log.SetReportCaller(true)
@@ -200,15 +200,15 @@ func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders ma
 	}
 	defer response.Body.Close()
 
-	var promStats RawAlloc
-	err = json.NewDecoder(response.Body).Decode(&promStats)
+	var VMStats RawAlloc
+	err = json.NewDecoder(response.Body).Decode(&VMStats)
 	if err != nil {
 		log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 		return rss
 	}
 
-	if len(promStats.Data.Result) != 0 {
-		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+	if len(VMStats.Data.Result) != 0 {
+		num, err := strconv.ParseFloat(VMStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
 			log.Error(fmt.Sprintf("Error in parsing float: %v", err))
 			return rss
@@ -217,9 +217,9 @@ func getRSS(clusterAddress, metricsAddress, jobID, jobName string, remainders ma
 	}
 
 	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
-	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_rss_value")
+	VMAllocs := getVMAllocs(metricsAddress, "nomad_client_allocs_memory_rss_value")
 	for allocID := range nomadAllocs {
-		if _, ok := promAllocs[allocID]; !ok {
+		if _, ok := VMAllocs[allocID]; !ok {
 			remainders[allocID] = append(remainders[allocID], "rss")
 		}
 	}
@@ -244,15 +244,15 @@ func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	}
 	defer response.Body.Close()
 
-	var promStats RawAlloc
-	err = json.NewDecoder(response.Body).Decode(&promStats)
+	var VMStats RawAlloc
+	err = json.NewDecoder(response.Body).Decode(&VMStats)
 	if err != nil {
 		log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 		return cache
 	}
 
-	if len(promStats.Data.Result) != 0 {
-		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+	if len(VMStats.Data.Result) != 0 {
+		num, err := strconv.ParseFloat(VMStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
 			log.Error(fmt.Sprintf("Error in parsing float: %v", err))
 			return cache
@@ -261,9 +261,9 @@ func getCache(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	}
 
 	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
-	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_memory_cache_value")
+	VMAllocs := getVMAllocs(metricsAddress, "nomad_client_allocs_memory_cache_value")
 	for allocID := range nomadAllocs {
-		if _, ok := promAllocs[allocID]; !ok {
+		if _, ok := VMAllocs[allocID]; !ok {
 			remainders[allocID] = append(remainders[allocID], "cache")
 		}
 	}
@@ -288,15 +288,15 @@ func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	}
 	defer response.Body.Close()
 
-	var promStats RawAlloc
-	err = json.NewDecoder(response.Body).Decode(&promStats)
+	var VMStats RawAlloc
+	err = json.NewDecoder(response.Body).Decode(&VMStats)
 	if err != nil {
 		log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
 		return ticks
 	}
 
-	if len(promStats.Data.Result) != 0 {
-		num, err := strconv.ParseFloat(promStats.Data.Result[0].Value[1].(string), 64)
+	if len(VMStats.Data.Result) != 0 {
+		num, err := strconv.ParseFloat(VMStats.Data.Result[0].Value[1].(string), 64)
 		if err != nil {
 			log.Error(fmt.Sprintf("Error in parsing float: %v", err))
 			return ticks
@@ -305,9 +305,9 @@ func getTicks(clusterAddress, metricsAddress, jobID, jobName string, remainders 
 	}
 
 	nomadAllocs := getNomadAllocs(clusterAddress, jobID)
-	promAllocs := getPromAllocs(metricsAddress, "nomad_client_allocs_cpu_total_ticks_value")
+	VMAllocs := getVMAllocs(metricsAddress, "nomad_client_allocs_cpu_total_ticks_value")
 	for allocID := range nomadAllocs {
-		if _, ok := promAllocs[allocID]; !ok {
+		if _, ok := VMAllocs[allocID]; !ok {
 			remainders[allocID] = append(remainders[allocID], "ticks")
 		}
 	}
