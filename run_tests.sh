@@ -20,7 +20,7 @@ main() {
 	fi
 
 	# Run tests
-	go test -count=1 -v ./...
+	go test -cover -count=1 -v ./...
 }
 
 main "$@"
