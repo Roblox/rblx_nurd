@@ -32,17 +32,35 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type APIError struct {
+	Error string
+}
+
 var (
 	wg     sync.WaitGroup
 	db     *sql.DB
 	insert *sql.Stmt
 )
 
+func handleAPIError(w http.ResponseWriter, err string, status int) {
+	log.Error(err)
+	w.WriteHeader(status)
+
+	errJSON := APIError{
+		Error: err,
+	}
+	if json.NewEncoder(w).Encode(errJSON) != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
 func homePage(w http.ResponseWriter, r *http.Request) {
 	log.SetLevel(log.TraceLevel)
 	log.SetReportCaller(true)
 	log.Trace(r)
 	
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Welcome to NURD.")
 }
 
@@ -53,11 +71,13 @@ func returnAll(w http.ResponseWriter, r *http.Request) {
 
 	all, err := getAllRowsDB(db)
 	if err != nil {
-		log.Error(fmt.Sprintf("Error in getting all rows from DB: %v", err))
+		handleAPIError(w, fmt.Sprintf("Error in getting all rows from DB: %v", err), http.StatusInternalServerError)
+		return
 	}
 	err = json.NewEncoder(w).Encode(all)
 	if err != nil {
-		log.Error(fmt.Sprintf("Error in encoding JSON: %v", err))
+		handleAPIError(w, fmt.Sprintf("Error in encoding JSON: %v", err), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -73,26 +93,37 @@ func returnJob(w http.ResponseWriter, r *http.Request) {
 	if !okBegin && !okEnd {
 		all, err := getLatestJobDB(db, jobID)
 		if err != nil {
-			log.Error(fmt.Sprintf("Error in getting latest job from DB: %v", err))
+			handleAPIError(w, fmt.Sprintf("Error in getting latest job from DB: %v", err), http.StatusInternalServerError)
+			return
 		}
 		err = json.NewEncoder(w).Encode(all)
 		if err != nil {
-			log.Error(fmt.Sprintf("Error in encoding JSON: %v", err))
+			handleAPIError(w, fmt.Sprintf("Error in encoding JSON: %v", err), http.StatusInternalServerError)
+			return
 		}
 	} else if !okBegin && okEnd {
-		fmt.Fprintf(w, "Missing query param: 'begin'")
+		handleAPIError(w, "Missing query param: 'begin'", http.StatusBadRequest)
 	} else if okBegin && !okEnd {
-		fmt.Fprintf(w, "Missing query param: 'end'")
+		handleAPIError(w, "Missing query param: 'end'", http.StatusBadRequest)
 	} else {
 		all, err := getTimeSliceDB(db, jobID, begin[0], end[0])
 		if err != nil {
-			log.Error(fmt.Sprintf("Error in getting latest job from DB: %v", err))
+			handleAPIError(w, fmt.Sprintf("Error in getting latest job from DB: %v", err), http.StatusInternalServerError)
+			return
 		}
 		err = json.NewEncoder(w).Encode(all)
 		if err != nil {
-			log.Error(fmt.Sprintf("Error in encoding JSON: %v", err))
+			handleAPIError(w, fmt.Sprintf("Error in encoding JSON: %v", err), http.StatusInternalServerError)
+			return;
 		}
 	}
+}
+
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	log.SetLevel(log.TraceLevel)
+	log.SetReportCaller(true)
+	log.Trace(r)
+	w.WriteHeader(http.StatusOK)
 }
 
 func collectData() {
@@ -104,8 +135,9 @@ func collectData() {
 		log.Fatal(fmt.Sprintf("Error in loading /etc/nurd/config.json: %v", err))
 	}
 
-	// Retry loading config 5 times before exiting
-	for i := 0; i < 5; i++ {
+	// Retry loading initializing DB 5 times before exiting
+	retryLoad := 5
+	for i := 0; i < retryLoad; i++ {
 		db, insert, err = initDB()
 		if err != nil {
 			log.Warning(fmt.Sprintf("DB initialization failed, retrying: %v", err))
@@ -114,7 +146,7 @@ func collectData() {
 			break
 		}
 
-		if i == 4 {
+		if i == retryLoad-1 {
 			log.Fatal(fmt.Sprintf("Error in initializing DB: %v", err))
 		}
 
@@ -183,5 +215,6 @@ func main() {
 	router.HandleFunc("/", homePage)
 	router.HandleFunc("/v1/jobs", returnAll)
 	router.HandleFunc("/v1/job/{id}", returnJob)
+	router.HandleFunc("/v1/health", healthCheck)
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
