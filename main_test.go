@@ -157,3 +157,14 @@ func TestReturnJobParams(t *testing.T) {
 	}
 	assert.Equal(t, expectedStr, actualStr)
 }
+
+func TestHealthCheck(t *testing.T) {
+	req, err := http.NewRequest("GET", "v1/health", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(healthCheck)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
