@@ -9,8 +9,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-
-	"fmt"
 )
 
 func TestHomePage(t *testing.T) {
