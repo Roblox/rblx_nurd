@@ -90,7 +90,7 @@ func initDB() (*sql.DB, *sql.Stmt, error) {
 
 func getAllRowsDB(db *sql.DB) ([]JobDataDB, error) {
 	if db == nil {
-		return nil, fmt.Errorf("Nil pointer parameter")
+		return nil, fmt.Errorf("Parameter db *sql.DB is nil")
 	}
 
 	all := make([]JobDataDB, 0)
@@ -128,7 +128,7 @@ func getAllRowsDB(db *sql.DB) ([]JobDataDB, error) {
 
 func getLatestJobDB(db *sql.DB, jobID string) ([]JobDataDB, error) {
 	if db == nil {
-		return nil, fmt.Errorf("Nil pointer parameter")
+		return nil, fmt.Errorf("Parameter db *sql.DB is nil")
 	}
 
 	all := make([]JobDataDB, 0)
@@ -168,7 +168,7 @@ func getLatestJobDB(db *sql.DB, jobID string) ([]JobDataDB, error) {
 
 func getTimeSliceDB(db *sql.DB, jobID, begin, end string) ([]JobDataDB, error) {
 	if db == nil {
-		return nil, fmt.Errorf("Nil pointer parameter")
+		return nil, fmt.Errorf("Parameter db *sql.DB is nil")
 	}
 
 	all := make([]JobDataDB, 0)

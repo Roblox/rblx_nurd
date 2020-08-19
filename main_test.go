@@ -60,7 +60,7 @@ func TestReturnAllNoDB(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 
 	expectedStr := APIError{
-		Error: "Error in getting all rows from DB: Nil pointer parameter",
+		Error: "Error in getting all rows from DB: Parameter db *sql.DB is nil",
 	}
 	var actualStr APIError
 	err = json.NewDecoder(rr.Body).Decode(&actualStr)
@@ -82,7 +82,7 @@ func TestReturnJobNoParam(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 
 	expectedStr := APIError{
-		Error: "Error in getting latest job from DB: Nil pointer parameter",
+		Error: "Error in getting latest job from DB: Parameter db *sql.DB is nil",
 	}
 	var actualStr APIError
 	err = json.NewDecoder(rr.Body).Decode(&actualStr)
@@ -127,6 +127,28 @@ func TestReturnJobNoEnd(t *testing.T) {
 
 	expectedStr := APIError{
 		Error: "Missing query param: 'end'",
+	}
+	var actualStr APIError
+	err = json.NewDecoder(rr.Body).Decode(&actualStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, expectedStr, actualStr)
+}
+
+func TestReturnJobParams(t *testing.T) {
+	req, err := http.NewRequest("GET", "/v1/job/jobID?begin=2020-07-18%2017:42:19&end=2020-07-18%2017:42:20", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(returnJob)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+
+	expectedStr := APIError{
+		Error: "Error in getting latest job from DB: Parameter db *sql.DB is nil",
 	}
 	var actualStr APIError
 	err = json.NewDecoder(rr.Body).Decode(&actualStr)
