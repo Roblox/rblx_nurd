@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -17,39 +16,43 @@ import (
 func TestHomePage(t *testing.T) {
 	log.SetOutput(ioutil.Discard)
 
-	testJSON := &Disk {
-		SizeMB: 12.0,
+	req, err := http.NewRequest("GET", "/", nil)
+	if err != nil {
+		t.Fatal(err)
 	}
-	json, _ := json.Marshal(testJSON)
-	request, err := http.NewRequest("POST", "/", bytes.NewBuffer(json))
-
-
-	// request, err := http.NewRequest("GET", "/", nil)
-	assert.Empty(t, err)
-	request.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(homePage)
-	handler.ServeHTTP(rr, request)
+	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
-	body, _ := ioutil.ReadAll(rr.Body)
-	fmt.Println(string(body))
 
+	expectedStr := "Welcome to NURD."
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, expectedStr, string(body))
 }
 
-func TestReturnAll(t *testing.T) {
-	request, err := http.NewRequest("GET", "/v1/jobs", nil)
-	assert.Empty(t, err)
+func TestReturnAllNoDB(t *testing.T) {
+	req, err := http.NewRequest("POST", "/v1/jobs", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(returnAll)
-	handler.ServeHTTP(rr, request)
-	assert.Equal(t, http.StatusOK, rr.Code)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+
+	expectedStr := APIError{
+		Error: "Error in getting all rows from DB: Nil pointer parameter",
+	}
+	var actualStr APIError
+	err = json.NewDecoder(rr.Body).Decode(&actualStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, expectedStr, actualStr)
 }
 
-func TestReturnJob(t *testing.T) {
-	request, err := http.NewRequest("GET", "/v1/job/jobID", nil)
-	assert.Empty(t, err)
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(returnJob)
-	handler.ServeHTTP(rr, request)
-	assert.Equal(t, http.StatusOK, rr.Code)
-}
+
