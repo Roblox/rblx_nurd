@@ -53,7 +53,6 @@ func TestReturnAllNoDB(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(returnAll)
 	handler.ServeHTTP(rr, req)
@@ -75,7 +74,6 @@ func TestReturnJobNoParam(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(returnJob)
 	handler.ServeHTTP(rr, req)
@@ -97,7 +95,6 @@ func TestReturnJobNoBegin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(returnJob)
 	handler.ServeHTTP(rr, req)
@@ -119,7 +116,6 @@ func TestReturnJobNoEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(returnJob)
 	handler.ServeHTTP(rr, req)
@@ -141,7 +137,6 @@ func TestReturnJobParams(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(returnJob)
 	handler.ServeHTTP(rr, req)
