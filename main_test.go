@@ -154,7 +154,7 @@ func TestReturnJobParams(t *testing.T) {
 }
 
 func TestHealthCheck(t *testing.T) {
-	req, err := http.NewRequest("GET", "v1/health", nil)
+	req, err := http.NewRequest("GET", "/v1/health", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
