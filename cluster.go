@@ -325,7 +325,7 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string) (f
 		response, err := http.Get(api)
 		if err != nil {
 			log.Error(fmt.Sprintf("Error in getting API response: %v", err))
-			return rss, cache, ticks
+			continue
 		}
 		defer response.Body.Close()
 
@@ -333,7 +333,7 @@ func getRemainderNomad(clusterAddress string, remainders map[string][]string) (f
 		err = json.NewDecoder(response.Body).Decode(&nomadAlloc)
 		if err != nil {
 			log.Error(fmt.Sprintf("Error in decoding JSON: %v", err))
-			return rss, cache, ticks
+			continue
 		}
 
 		for _, val := range slice {
