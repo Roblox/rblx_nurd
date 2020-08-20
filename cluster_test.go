@@ -7,7 +7,7 @@ You may obtain a copy of the License at
 
 	http://www.apache.org/licenses/LICENSE-2.0
 
-	
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -69,7 +69,6 @@ func TestGetVMAllocs(t *testing.T) {
 					]
 				}
 			}`,
-
 		),
 	)
 	expectedVMAllocs = map[string]struct{}{
@@ -228,8 +227,8 @@ func TestGetRSS(t *testing.T) {
 	)
 	expectedRSS := 13459456 / 1.049e6
 	expectedRemainders := map[string][]string{
-		"alloc_id3": []string{"rss"},
-		"alloc_id4": []string{"rss"},
+		"alloc_id3": {"rss"},
+		"alloc_id4": {"rss"},
 	}
 	actualRemainders := map[string][]string{}
 	actualRSS := getRSS("clusterAddress", "metricsAddress", "jobID", "jobName", actualRemainders)
@@ -249,17 +248,17 @@ func TestGetRSS(t *testing.T) {
 
 	expectedRSS = 0.0
 	expectedRemainders = map[string][]string{
-		"alloc_id1": []string{"rss"},
-		"alloc_id2": []string{"rss"},
-		"alloc_id3": []string{"rss"},
-		"alloc_id4": []string{"rss"},
+		"alloc_id1": {"rss"},
+		"alloc_id2": {"rss"},
+		"alloc_id3": {"rss"},
+		"alloc_id4": {"rss"},
 	}
 	actualRemainders = map[string][]string{}
 	actualRSS = getRSS("clusterAddress", "badAddress", "jobID", "jobName", actualRemainders)
 	assert.NotNil(t, actualRSS)
 	assert.Equal(t, expectedRSS, actualRSS)
 	assert.NotNil(t, actualRemainders)
-	assert.Equal(t, expectedRemainders, actualRemainders)	
+	assert.Equal(t, expectedRemainders, actualRemainders)
 
 	expectedRSS = 0.0
 	expectedRemainders = map[string][]string{}
@@ -384,8 +383,8 @@ func TestGetCache(t *testing.T) {
 	)
 	expectedCache := 13459456 / 1.049e6
 	expectedRemainders := map[string][]string{
-		"alloc_id3": []string{"cache"},
-		"alloc_id4": []string{"cache"},
+		"alloc_id3": {"cache"},
+		"alloc_id4": {"cache"},
 	}
 	actualRemainders := map[string][]string{}
 	actualCache := getCache("clusterAddress", "metricsAddress", "jobID", "jobName", actualRemainders)
@@ -405,17 +404,17 @@ func TestGetCache(t *testing.T) {
 
 	expectedCache = 0.0
 	expectedRemainders = map[string][]string{
-		"alloc_id1": []string{"cache"},
-		"alloc_id2": []string{"cache"},
-		"alloc_id3": []string{"cache"},
-		"alloc_id4": []string{"cache"},
+		"alloc_id1": {"cache"},
+		"alloc_id2": {"cache"},
+		"alloc_id3": {"cache"},
+		"alloc_id4": {"cache"},
 	}
 	actualRemainders = map[string][]string{}
 	actualCache = getCache("clusterAddress", "badAddress", "jobID", "jobName", actualRemainders)
 	assert.NotNil(t, actualCache)
 	assert.Equal(t, expectedCache, actualCache)
 	assert.NotNil(t, actualRemainders)
-	assert.Equal(t, expectedRemainders, actualRemainders)	
+	assert.Equal(t, expectedRemainders, actualRemainders)
 
 	expectedCache = 0.0
 	expectedRemainders = map[string][]string{}
@@ -538,10 +537,10 @@ func TestGetTicks(t *testing.T) {
 			}`,
 		),
 	)
-	expectedTicks := 13459456.0 
+	expectedTicks := 13459456.0
 	expectedRemainders := map[string][]string{
-		"alloc_id3": []string{"ticks"},
-		"alloc_id4": []string{"ticks"},
+		"alloc_id3": {"ticks"},
+		"alloc_id4": {"ticks"},
 	}
 	actualRemainders := map[string][]string{}
 	actualTicks := getTicks("clusterAddress", "metricsAddress", "jobID", "jobName", actualRemainders)
@@ -561,17 +560,17 @@ func TestGetTicks(t *testing.T) {
 
 	expectedTicks = 0.0
 	expectedRemainders = map[string][]string{
-		"alloc_id1": []string{"ticks"},
-		"alloc_id2": []string{"ticks"},
-		"alloc_id3": []string{"ticks"},
-		"alloc_id4": []string{"ticks"},
+		"alloc_id1": {"ticks"},
+		"alloc_id2": {"ticks"},
+		"alloc_id3": {"ticks"},
+		"alloc_id4": {"ticks"},
 	}
 	actualRemainders = map[string][]string{}
 	actualTicks = getTicks("clusterAddress", "badAddress", "jobID", "jobName", actualRemainders)
 	assert.NotNil(t, actualTicks)
 	assert.Equal(t, expectedTicks, actualTicks)
 	assert.NotNil(t, actualRemainders)
-	assert.Equal(t, expectedRemainders, actualRemainders)	
+	assert.Equal(t, expectedRemainders, actualRemainders)
 
 	expectedTicks = 0.0
 	expectedRemainders = map[string][]string{}
@@ -627,4 +626,160 @@ func TestGetTicks(t *testing.T) {
 	assert.Equal(t, expectedTicks, actualTicks)
 	assert.NotNil(t, actualRemainders)
 	assert.Equal(t, expectedRemainders, actualRemainders)
+}
+
+func TestGetRemainderNomad(t *testing.T) {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/client/allocation/alloc_id1/stats",
+		httpmock.NewStringResponder(200, `
+			{
+				"ResourceUsage": {
+					"MemoryStats": {
+						"RSS": 6451200,
+						"Cache": 654321,
+						"Swap": 0,
+						"Usage": 7569408,
+						"MaxUsage": 9162752,
+						"KernelUsage": 0,
+						"KernelMaxUsage": 0
+					},
+					"CpuStats": {
+						"TotalTicks": 2394.4724337708644
+					}
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/client/allocation/alloc_id2/stats",
+		httpmock.NewStringResponder(200, `
+			{
+				"ResourceUsage": {
+					"MemoryStats": {
+						"RSS": 552821,
+						"Cache": 789246,
+						"Swap": 0,
+						"Usage": 98176514,
+						"MaxUsage": 16546,
+						"KernelUsage": 0,
+						"KernelMaxUsage": 0
+					},
+					"CpuStats": {
+						"TotalTicks": 1125.6842315
+					}
+				}
+			}`,
+		),
+	)
+	remainders := map[string][]string{
+		"alloc_id1": {"rss", "cache", "ticks"},
+		"alloc_id2": {"rss", "cache", "ticks"},
+	}
+	expectedRSS := 6451200/1.049e6 + 552821/1.049e6
+	expectedCache := 654321/1.049e6 + 789246/1.049e6
+	expectedTicks := 2394.4724337708644 + 1125.6842315
+	actualRSS, actualCache, actualTicks := getRemainderNomad("clusterAddress", remainders)
+	assert.NotNil(t, actualRSS)
+	assert.NotNil(t, actualCache)
+	assert.NotNil(t, actualTicks)
+	assert.Equal(t, expectedRSS, actualRSS)
+	assert.Equal(t, expectedCache, actualCache)
+	assert.Equal(t, expectedTicks, actualTicks)
+
+	remainders = map[string][]string{
+		"alloc_id1": {"cache", "ticks"},
+		"alloc_id2": {"rss"},
+	}
+	expectedRSS = 552821 / 1.049e6
+	expectedCache = 654321 / 1.049e6
+	expectedTicks = 2394.4724337708644
+	actualRSS, actualCache, actualTicks = getRemainderNomad("clusterAddress", remainders)
+	assert.NotNil(t, actualRSS)
+	assert.NotNil(t, actualCache)
+	assert.NotNil(t, actualTicks)
+	assert.Equal(t, expectedRSS, actualRSS)
+	assert.Equal(t, expectedCache, actualCache)
+	assert.Equal(t, expectedTicks, actualTicks)
+
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/client/allocation/alloc_id3/stats",
+		httpmock.NewStringResponder(200, `
+			{
+				Invalid JSON
+			}`,
+		),
+	)
+	remainders = map[string][]string{
+		"alloc_id3": {"rss", "cache", "ticks"},
+	}
+	expectedRSS = 0.0
+	expectedCache = 0.0
+	expectedTicks = 0.0
+	actualRSS, actualCache, actualTicks = getRemainderNomad("clusterAddress", remainders)
+	assert.Empty(t, actualRSS)
+	assert.Empty(t, actualCache)
+	assert.Empty(t, actualTicks)
+	assert.Equal(t, expectedRSS, actualRSS)
+	assert.Equal(t, expectedCache, actualCache)
+	assert.Equal(t, expectedTicks, actualTicks)
+
+	remainders = map[string][]string{
+		"alloc_id1": {"rss", "cache", "ticks"},
+		"alloc_id2": {"rss", "cache", "ticks"},
+	}
+	expectedRSS = 0.0
+	expectedCache = 0.0
+	expectedTicks = 0.0
+	actualRSS, actualCache, actualTicks = getRemainderNomad("badAddress", remainders)
+	assert.Empty(t, actualRSS)
+	assert.Empty(t, actualCache)
+	assert.Empty(t, actualTicks)
+	assert.Equal(t, expectedRSS, actualRSS)
+	assert.Equal(t, expectedCache, actualCache)
+	assert.Equal(t, expectedTicks, actualTicks)
+
+	remainders = map[string][]string{
+		"alloc_id1": {"rss", "cache", "ticks"},
+		"alloc_id3": {"rss", "cache", "ticks"},
+	}
+	expectedRSS = 6451200 / 1.049e6
+	expectedCache = 654321 / 1.049e6
+	expectedTicks = 2394.4724337708644
+	actualRSS, actualCache, actualTicks = getRemainderNomad("clusterAddress", remainders)
+	assert.NotNil(t, actualRSS)
+	assert.NotNil(t, actualCache)
+	assert.NotNil(t, actualTicks)
+	assert.Equal(t, expectedRSS, actualRSS)
+	assert.Equal(t, expectedCache, actualCache)
+	assert.Equal(t, expectedTicks, actualTicks)
+
+	remainders = map[string][]string{
+		"alloc_id3": {"rss", "cache", "ticks"},
+		"alloc_id1": {"rss", "cache", "ticks"},
+	}
+	expectedRSS = 6451200 / 1.049e6
+	expectedCache = 654321 / 1.049e6
+	expectedTicks = 2394.4724337708644
+	actualRSS, actualCache, actualTicks = getRemainderNomad("clusterAddress", remainders)
+	assert.NotNil(t, actualRSS)
+	assert.NotNil(t, actualCache)
+	assert.NotNil(t, actualTicks)
+	assert.Equal(t, expectedRSS, actualRSS)
+	assert.Equal(t, expectedCache, actualCache)
+	assert.Equal(t, expectedTicks, actualTicks)
+
+	remainders = map[string][]string{
+		"alloc_id4": {"rss", "cache", "ticks"},
+		"alloc_id1": {"rss", "cache", "ticks"},
+	}
+	expectedRSS = 6451200 / 1.049e6
+	expectedCache = 654321 / 1.049e6
+	expectedTicks = 2394.4724337708644
+	actualRSS, actualCache, actualTicks = getRemainderNomad("clusterAddress", remainders)
+	assert.NotNil(t, actualRSS)
+	assert.NotNil(t, actualCache)
+	assert.NotNil(t, actualTicks)
+	assert.Equal(t, expectedRSS, actualRSS)
+	assert.Equal(t, expectedCache, actualCache)
+	assert.Equal(t, expectedTicks, actualTicks)
 }
