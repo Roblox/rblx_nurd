@@ -20,6 +20,8 @@ main() {
 	fi
 
 	# Run tests
+	trap 'docker-compose down' exit
+	docker-compose up -d mssql
 	go test -cover -count=1 -v ./...
 }
 
