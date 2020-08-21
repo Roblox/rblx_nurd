@@ -135,7 +135,7 @@ func collectData() {
 		log.Fatal(fmt.Sprintf("Error in loading /etc/nurd/config.json: %v", err))
 	}
 
-	// Retry loading initializing DB 5 times before exiting
+	// Retry initializing DB 5 times before exiting
 	retryLoad := 5
 	for i := 0; i < retryLoad; i++ {
 		db, insert, err = initDB()

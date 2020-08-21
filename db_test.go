@@ -7,7 +7,7 @@ You may obtain a copy of the License at
 
 	http://www.apache.org/licenses/LICENSE-2.0
 
-	
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,27 +21,83 @@ import (
 	"database/sql"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInitDB(t *testing.T) {
+func populateDB(t *testing.T, insert *sql.Stmt) {
+	layout := "2006-01-02 15:04:05"
+	str := "2000-01-01 00:00:00"
+	time1, err := time.Parse(layout, str)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = insert.Exec("JobID1", "JobName1", 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, "Namespace1", "DC1", time1, time1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	str = "2000-01-02 00:00:00"
+	time2, err := time.Parse(layout, str)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = insert.Exec("JobID1", "JobName1", 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, "Namespace1", "DC1", time2, time2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = insert.Exec("JobID1", "JobName1", 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, "Namespace1", "DC1", time2, time2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = insert.Exec("JobID2", "JobName2", 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, "Namespace2", "DC2", time2, time2)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInitDBMock(t *testing.T) {
+	var DBPtr *sql.DB
+	var StmtPtr *sql.Stmt
+
 	os.Setenv("CONNECTION_STRING", "VALUE")
+
 	db, insert, err := initDB()
 	assert.NotNil(t, err)
 	assert.Empty(t, db)
-
-	var DBPtr *sql.DB
 	assert.IsType(t, DBPtr, db)
 	assert.Empty(t, insert)
-
-	var StmtPtr *sql.Stmt
 	assert.IsType(t, StmtPtr, insert)
-	assert.Empty(t, StmtPtr)
+	assert.Empty(t, insert)
 }
 
-func TestGetAllRowsDB(t *testing.T) {
+func TestInitDBLive(t *testing.T) {
+	var db, DBPtr *sql.DB
+	var insert, StmtPtr *sql.Stmt
+	var err error
+
+	os.Setenv("CONNECTION_STRING", "Server=localhost;Database=master;User Id=sa;Password=yourStrong(!)Password;")
+
+	// Retry initializing DB 5 times before failing
+	retryLoad := 5
+	for i := 0; i < retryLoad; i++ {
+		db, insert, err = initDB()
+		if err == nil {
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
+	assert.Empty(t, err)
+	assert.NotNil(t, db)
+	assert.IsType(t, DBPtr, db)
+	assert.NotNil(t, insert)
+	assert.IsType(t, StmtPtr, insert)
+	assert.NotNil(t, insert)
+}
+
+func TestGetAllRowsDBMock(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.Empty(t, err)
 	defer db.Close()
@@ -72,7 +128,7 @@ func TestGetAllRowsDB(t *testing.T) {
 	assert.NotEmpty(t, all)
 
 	expected := []JobDataDB{
-		JobDataDB{
+		{
 			"JobID1",
 			"name1",
 			111.1,
@@ -87,7 +143,7 @@ func TestGetAllRowsDB(t *testing.T) {
 			"0000-00-01",
 			"0000-00-01",
 		},
-		JobDataDB{
+		{
 			"JobID2",
 			"name2",
 			222.2,
@@ -106,7 +162,86 @@ func TestGetAllRowsDB(t *testing.T) {
 	assert.Equal(t, expected, all)
 }
 
-func TestGetLatestJobDB(t *testing.T) {
+func TestGetAllRowsDBLive(t *testing.T) {
+	var db *sql.DB
+	var insert *sql.Stmt
+	var err error
+
+	os.Setenv("CONNECTION_STRING", "Server=localhost;Database=master;User Id=sa;Password=yourStrong(!)Password;")
+	db, insert, err = initDB()
+
+	populateDB(t, insert)
+
+	all, err := getAllRowsDB(db)
+	assert.Nil(t, err)
+	assert.NotNil(t, all)
+
+	expected := []JobDataDB{
+		{
+			"JobID1",
+			"JobName1",
+			1.0,
+			1.0,
+			1.0,
+			1.0,
+			1.0,
+			1.0,
+			1.0,
+			"Namespace1",
+			"DC1",
+			"2000-01-01T00:00:00Z",
+			"2000-01-01T00:00:00Z",
+		},
+		{
+			"JobID1",
+			"JobName1",
+			3.0,
+			3.0,
+			3.0,
+			3.0,
+			3.0,
+			3.0,
+			3.0,
+			"Namespace1",
+			"DC1",
+			"2000-01-02T00:00:00Z",
+			"2000-01-02T00:00:00Z",
+		},
+		{
+			"JobID1",
+			"JobName1",
+			2.0,
+			2.0,
+			2.0,
+			2.0,
+			2.0,
+			2.0,
+			2.0,
+			"Namespace1",
+			"DC1",
+			"2000-01-02T00:00:00Z",
+			"2000-01-02T00:00:00Z",
+		},
+		{
+			"JobID2",
+			"JobName2",
+			2.0,
+			2.0,
+			2.0,
+			2.0,
+			2.0,
+			2.0,
+			2.0,
+			"Namespace2",
+			"DC2",
+			"2000-01-02T00:00:00Z",
+			"2000-01-02T00:00:00Z",
+		},
+	}
+	assert.Equal(t, expected, all)
+}
+
+func TestGetLatestJobDBMock(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.Empty(t, err)
 	defer db.Close()
@@ -159,7 +294,7 @@ func TestGetLatestJobDB(t *testing.T) {
 	assert.NotEmpty(t, all)
 
 	expected := []JobDataDB{
-		JobDataDB{
+		{
 			"JobID1",
 			"name1",
 			111.1,
@@ -178,7 +313,37 @@ func TestGetLatestJobDB(t *testing.T) {
 	assert.Equal(t, expected, all)
 }
 
-func TestGetTimeSliceDB(t *testing.T) {
+func TestGetLatestJobDBLive(t *testing.T) {
+	var db *sql.DB
+	var err error
+
+	os.Setenv("CONNECTION_STRING", "Server=localhost;Database=master;User Id=sa;Password=yourStrong(!)Password;")
+	db, _, err = initDB()
+
+	all, err := getLatestJobDB(db, "JobID1")
+	assert.Nil(t, err)
+	assert.NotNil(t, all)
+	expected := []JobDataDB{
+		{
+			"JobID1",
+			"JobName1",
+			5.0,
+			5.0,
+			5.0,
+			5.0,
+			5.0,
+			5.0,
+			0.0,
+			"Namespace1",
+			"DC1",
+			"",
+			"2000-01-02T00:00:00Z",
+		},
+	}
+	assert.Equal(t, expected, all)
+}
+
+func TestGetTimeSliceDBMock(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.Empty(t, err)
 	defer db.Close()
@@ -233,7 +398,7 @@ func TestGetTimeSliceDB(t *testing.T) {
 	assert.NotEmpty(t, all)
 
 	expected := []JobDataDB{
-		JobDataDB{
+		{
 			"JobID1",
 			"name1",
 			111.1,
@@ -249,5 +414,68 @@ func TestGetTimeSliceDB(t *testing.T) {
 			"2020-07-07T17:35:00Z",
 		},
 	}
+	assert.Equal(t, expected, all)
+}
+
+func TestGetTimeSliceDBLive(t *testing.T) {
+	var db *sql.DB
+	var err error
+
+	os.Setenv("CONNECTION_STRING", "Server=localhost;Database=master;User Id=sa;Password=yourStrong(!)Password;")
+	db, _, err = initDB()
+
+	all, err := getTimeSliceDB(db, "JobID1", "2000-01-01 00:00:01", "2000-01-02 00:00:01")
+	assert.Nil(t, err)
+	assert.NotNil(t, all)
+
+	expected := []JobDataDB{
+		{
+			"JobID1",
+			"JobName1",
+			5.0,
+			5.0,
+			5.0,
+			5.0,
+			5.0,
+			5.0,
+			0,
+			"Namespace1",
+			"DC1",
+			"",
+			"2000-01-02T00:00:00Z",
+		},
+	}
+	assert.Equal(t, expected, all)
+
+	all, err = getTimeSliceDB(db, "JobID1", "2000-01-01 00:00:00", "2000-01-01 12:00:01")
+	assert.Nil(t, err)
+	assert.NotNil(t, all)
+
+	expected = []JobDataDB{
+		{
+			"JobID1",
+			"JobName1",
+			1.0,
+			1.0,
+			1.0,
+			1.0,
+			1.0,
+			1.0,
+			0,
+			"Namespace1",
+			"DC1",
+			"",
+			"2000-01-01T00:00:00Z",
+		},
+	}
+	assert.NotNil(t, all)
+	assert.Equal(t, expected, all)
+
+	all, err = getTimeSliceDB(db, "JobID1", "2000-04-04 00:00:00", "2000-05-05 12:00:01")
+	assert.Nil(t, err)
+	assert.NotNil(t, all)
+
+	expected = []JobDataDB{}
+	assert.NotNil(t, all)
 	assert.Equal(t, expected, all)
 }
