@@ -1,5 +1,5 @@
 # <img src="NURD.png" width="60" height="80" alt=":NURD:" class="emoji" title=":NURD:"/> Nomad Usage Resource Dashboard (NURD)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Roblox/nurd/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Roblox/rblx_nurd/blob/master/LICENSE)
 [![CircleCI](https://circleci-github.rcs.simulpong.com/gh/Roblox/rblx_nurd/tree/master.svg?style=shield&circle-token=638e19f15c88268832a4f2a7bfee4f081df8d65d)](https://circleci-github.rcs.simulpong.com/gh/Roblox/rblx_nurd/tree/master)
 
 NURD is a dashboard which aggregates and displays CPU and memory resource usage for each job running through specified Hashicorp Nomad servers. The dashboard also displays resources requested by each job, which can be used with resource usage to calculate waste and aid capacity planning. 
@@ -10,14 +10,15 @@ NURD is a dashboard which aggregates and displays CPU and memory resource usage 
 * **Optional:** A VictoriaMetrics server containing allocation level resource statistics
 
 ## Setup
-The user can configure NURD to connect to a containerized SQL Server instance with [docker-compose.yml](https://github.com/Roblox/nurd/blob/master/docker-compose.yml) or point to another SQL Server instance with [Dockerfile](https://github.com/Roblox/nurd/blob/master/Dockerfile). See options below for details. 
+The user can configure NURD to connect to a containerized SQL Server instance with [docker-compose.yml](https://github.com/Roblox/rblx_nurd/blob/master/docker-compose.yml) or point to another SQL Server instance with [Dockerfile](https://github.com/Roblox/rblx_nurd/blob/master/Dockerfile). See options below for details. By default, NURD collects data every 15 minutes. To modify the frequency, edit [Dockerfile](https://github.com/Roblox/rblx_nurd/blob/master/Dockerfile#L21) with the following formatting style before startup:<br>
+`CMD ["nurd", "--aggregate-frequency", "15m"]`
 
 ### Containerized SQL Server Instance
 1. `$ git clone git@github.com:Roblox/nurd.git`
 2. **Configuration**<br>
-    * **[docker-compose.yml](https://github.com/Roblox/nurd/blob/master/docker-compose.yml)**<br>
+    * **[docker-compose.yml](https://github.com/Roblox/rblx_nurd/blob/master/docker-compose.yml)**<br>
         This file contains the necessary login information to create a SQL Server instance.
-    * **[etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)**<br>
+    * **[etc/nurd/config.json](https://github.com/Roblox/rblx_nurd/blob/master/etc/nurd/config.json)**<br>
         This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default URLs and ports must be overwritten. If no VictoriaMetrics server exists, the VictoriaMetrics stanza must be removed. Note, any amount of servers can be added to the `Nomad` array.
 4. `$ docker-compose build`
 5. `$ docker-compose up -d`
@@ -37,15 +38,15 @@ The user can configure NURD to connect to a containerized SQL Server instance wi
         Password: yourStrong(!)Password
     f. Select `Save & Test`<br>
     g. Navigate to [localhost:3000/dashboard/import](http://localhost:3000/dashboard/import) and select `Upload JSON file`<br>
-    h. Upload [grafana.json](https://github.com/Roblox/nurd/blob/master/grafana.json) and select `import`<br>
+    h. Upload [grafana.json](https://github.com/Roblox/rblx_nurd/blob/master/grafana.json) and select `import`<br>
 
 
 ### Another SQL Server Instance
 1. `$ git clone git@github.com:Roblox/nurd.git`
 2. **Configuration**<br>
-    * **[Dockerfile](https://github.com/Roblox/nurd/blob/master/Dockerfile)**<br>
-        This file contains the necessary login information to connect to a separate SQL Server instance. It is necessary to configure the [connection string](https://github.com/Roblox/nurd/blob/master/Dockerfile#L5)  environment variable.
-    * **[etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)**<br>
+    * **[Dockerfile](https://github.com/Roblox/rblx_nurd/blob/master/Dockerfile)**<br>
+        This file contains the necessary login information to connect to a separate SQL Server instance. It is necessary to configure the [connection string](https://github.com/Roblox/rblx_nurd/blob/master/Dockerfile#L5)  environment variable.
+    * **[etc/nurd/config.json](https://github.com/Roblox/rblx_nurd/blob/master/etc/nurd/config.json)**<br>
         This file contains the configuration information for the Nomad server(s) and the VictoriaMetrics server. The default URLs and ports must be overwritten. If no VictoriaMetrics server exists, the VictoriaMetrics stanza must be removed. Note, any amount of servers can be added to the `Nomad` array.
 3. `$ cd nurd`
 4. `$ docker build -t nurd .`
@@ -115,7 +116,7 @@ NURD supports hot reloading to point NURD to different Nomad clusters and/or a V
 
 1. `Exec` into the container running NURD<br>
     `$ docker exec -it nurd /bin/bash`
-2. Edit the contents of [/etc/nurd/config.json](https://github.com/Roblox/nurd/blob/master/etc/nurd/config.json)<br>
+2. Edit the contents of [/etc/nurd/config.json](https://github.com/Roblox/rblx_nurd/blob/master/etc/nurd/config.json)<br>
     `$ vim /etc/nurd/config.json`
 3. Exit the container<br>
     `$ exit`

@@ -20,6 +20,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -126,11 +127,20 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func collectData() {
+func collectData(freq *string) {
 	log.SetReportCaller(true)
 	log.SetLevel(log.TraceLevel)
 
-	err := loadConfig("/etc/nurd/config.json")
+	duration, err := time.ParseDuration(*freq)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("Failed to parse duration: %v", err))
+	}
+	if duration > 30 * time.Minute || duration <= 0 * time.Minute {
+		log.Warning("--aggregate-frequency should be within (0m, 30m]. Defaulting to 15m.")
+		duration = 15 * time.Minute
+	}
+
+	err = loadConfig("/etc/nurd/config.json")
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Error in loading /etc/nurd/config.json: %v", err))
 	}
@@ -185,7 +195,7 @@ func collectData() {
 		}
 
 		log.Trace("END AGGREGATION")
-		time.Sleep(1 * time.Minute)
+		time.Sleep(duration)
 	}
 }
 
@@ -205,7 +215,9 @@ func reloadConfig(sigs chan os.Signal) {
 }
 
 func main() {
-	go collectData()
+	freq := flag.String("aggregate-frequency", "15m", "frequency of resource aggregation")
+	flag.Parse()
+	go collectData(freq)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGHUP)
