@@ -371,7 +371,7 @@ func aggUsed(clusterAddress, metricsAddress, jobID, jobName string) (float64, fl
 	return rss, ticks, cache
 }
 
-func aggRequested(clusterAddress, metricsAddress, jobID, jobType string) (float64, float64, float64, float64) {
+func aggRequested(clusterAddress, jobID, jobType string) (float64, float64, float64, float64) {
 	var cpu, memoryMB, diskMB, iops, count float64
 
 	log.SetLevel(log.TraceLevel)
@@ -468,7 +468,7 @@ func reachCluster(clusterAddress, metricsAddress string, c chan<- []JobData) {
 			continue
 		}
 		rss, ticks, cache = aggUsed(clusterAddress, metricsAddress, job.ID, job.Name)
-		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal = aggRequested(clusterAddress, metricsAddress, job.ID, job.Type)
+		CPUTotal, memoryMBTotal, diskMBTotal, IOPSTotal = aggRequested(clusterAddress, job.ID, job.Type)
 
 		var dataCenters string
 		for i, val := range job.Datacenters {
