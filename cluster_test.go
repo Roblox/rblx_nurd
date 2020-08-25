@@ -783,3 +783,390 @@ func TestGetRemainderNomad(t *testing.T) {
 	assert.Equal(t, expectedCache, actualCache)
 	assert.Equal(t, expectedTicks, actualTicks)
 }
+
+func TestAggUsed(t *testing.T) {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22jobName%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"13459456"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22jobName%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"33459456"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22jobName%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"23459456.0"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+	expectedRSS := 13459456 / 1.049e6
+	expectedTicks := 23459456.0
+	expectedCache := 33459456 / 1.049e6
+	actualRSS, actualTicks, actualCache := aggUsed("clusterAddress", "metricsAddress", "jobID", "jobName")
+	assert.NotNil(t, actualRSS)
+	assert.NotNil(t, actualTicks)
+	assert.NotNil(t, actualCache)
+	assert.Equal(t, expectedRSS, actualRSS)
+	assert.Equal(t, expectedTicks, actualTicks)
+	assert.Equal(t, expectedCache, actualCache)
+
+	// nomadAllocs
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/job/jobID/allocations",
+		httpmock.NewStringResponder(200, `
+			[
+				{
+					"ID": "alloc_id1"
+				},
+				{
+					"ID": "alloc_id2"
+				}
+			]`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/client/allocation/alloc_id1/stats",
+		httpmock.NewStringResponder(200, `
+			{
+				"ResourceUsage": {
+					"MemoryStats": {
+						"RSS": 6451200,
+						"Cache": 654321,
+						"Swap": 0,
+						"Usage": 7569408,
+						"MaxUsage": 9162752,
+						"KernelUsage": 0,
+						"KernelMaxUsage": 0
+					},
+					"CpuStats": {
+						"TotalTicks": 2394.4724337708644
+					}
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/client/allocation/alloc_id2/stats",
+		httpmock.NewStringResponder(200, `
+			{
+				"ResourceUsage": {
+					"MemoryStats": {
+						"RSS": 552821,
+						"Cache": 789246,
+						"Swap": 0,
+						"Usage": 98176514,
+						"MaxUsage": 16546,
+						"KernelUsage": 0,
+						"KernelMaxUsage": 0
+					},
+					"CpuStats": {
+						"TotalTicks": 1125.6842315
+					}
+				}
+			}`,
+		),
+	)
+	expectedRSS = (13459456 + 6451200 + 552821) / 1.049e6
+	expectedTicks = 23459456.0 + 2394.4724337708644 + 1125.6842315
+	expectedCache = (33459456 + 654321 + 789246) / 1.049e6
+	actualRSS, actualTicks, actualCache = aggUsed("clusterAddress", "metricsAddress", "jobID", "jobName")
+	assert.NotNil(t, actualRSS)
+	assert.NotNil(t, actualTicks)
+	assert.NotNil(t, actualCache)
+	assert.Equal(t, expectedRSS, actualRSS)
+	assert.Equal(t, expectedTicks, actualTicks)
+	assert.Equal(t, expectedCache, actualCache)
+
+	// VMAllocs
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=nomad_client_allocs_memory_rss_value",
+		httpmock.NewStringResponder(200, `
+			{
+				"status":"successTest",
+				"data":{
+					"resultType":"vectorTest",
+					"result":[
+						{
+							"metric":{
+								"alloc_id":"alloc_id1"
+							}
+						},
+						{
+							"metric":{
+								"alloc_id":"alloc_id2"
+							}
+						}
+					]
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=nomad_client_allocs_cpu_total_ticks_value",
+		httpmock.NewStringResponder(200, `
+			{
+				"status":"successTest",
+				"data":{
+					"resultType":"vectorTest",
+					"result":[
+						{
+							"metric":{
+								"alloc_id":"alloc_id1"
+							}
+						},
+						{
+							"metric":{
+								"alloc_id":"alloc_id2"
+							}
+						}
+					]
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=nomad_client_allocs_memory_cache_value",
+		httpmock.NewStringResponder(200, `
+			{
+				"status":"successTest",
+				"data":{
+					"resultType":"vectorTest",
+					"result":[
+						{
+							"metric":{
+								"alloc_id":"alloc_id1"
+							}
+						},
+						{
+							"metric":{
+								"alloc_id":"alloc_id2"
+							}
+						}
+					]
+				}
+			}`,
+		),
+	)
+	expectedRSS = 13459456 / 1.049e6
+	expectedTicks = 23459456.0
+	expectedCache = 33459456 / 1.049e6
+	actualRSS, actualTicks, actualCache = aggUsed("clusterAddress", "metricsAddress", "jobID", "jobName")
+	assert.NotNil(t, actualRSS)
+	assert.NotNil(t, actualTicks)
+	assert.NotNil(t, actualCache)
+	assert.Equal(t, expectedRSS, actualRSS)
+	assert.Equal(t, expectedTicks, actualTicks)
+	assert.Equal(t, expectedCache, actualCache)
+}
+
+func TestAggRequested(t *testing.T) {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	// System Job
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/job/jobID",
+		httpmock.NewStringResponder(200, `
+			{
+				"ID": "jobID",
+				"TaskGroups": [
+					{
+						"Name": "TaskGroup1",
+						"Count": 1,
+						"Tasks": [
+							{
+								"Resources": {
+									"CPU": 200,
+									"MemoryMB": 512,
+									"IOPS": 20
+								}
+							}
+						],
+						"EphemeralDisk": {
+							"SizeMB": 1000
+						}
+					},
+					{
+						"Name": "TaskGroup2",
+						"Count": 1,
+						"Tasks": [
+							{
+								"Resources": {
+									"CPU": 400,
+									"MemoryMB": 256,
+									"IOPS": 40
+								}
+							}
+						],
+						"EphemeralDisk": {
+							"SizeMB": 500
+						}
+					}
+				]
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/job/jobID/allocations",
+		httpmock.NewStringResponder(200, `
+			[
+				{
+					"TaskGroup": "TaskGroup1"
+				},
+				{
+					"TaskGroup": "TaskGroup1"
+				},
+				{
+					"TaskGroup": "TaskGroup2"
+				},
+				{
+					"TaskGroup": "TaskGroup2"
+				},
+				{
+					"TaskGroup": "TaskGroup2"
+				}
+			]`,
+		),
+	)
+	expectedCPU := 1600.0
+	expectedMemory := 1792.0
+	expectedDisk := 3500.0
+	expectedIOPS := 160.0
+	actualCPU, actualMemory, actualDisk, actualIOPS := aggRequested("clusterAddress", "jobID", "system")
+	assert.NotNil(t, actualCPU)
+	assert.NotNil(t, actualMemory)
+	assert.NotNil(t, actualDisk)
+	assert.NotNil(t, actualIOPS)
+	assert.Equal(t, expectedCPU, actualCPU)
+	assert.Equal(t, expectedMemory, actualMemory)
+	assert.Equal(t, expectedDisk, actualDisk)
+	assert.Equal(t, expectedIOPS, actualIOPS)
+
+	// Service Job
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/job/jobID2",
+		httpmock.NewStringResponder(200, `
+			{
+				"ID": "jobID",
+				"TaskGroups": [
+					{
+						"Name": "TaskGroup1",
+						"Count": 3,
+						"Tasks": [
+							{
+								"Resources": {
+									"CPU": 200,
+									"MemoryMB": 512,
+									"IOPS": 20
+								}
+							}
+						],
+						"EphemeralDisk": {
+							"SizeMB": 1000
+						}
+					},
+					{
+						"Name": "TaskGroup2",
+						"Count": 2,
+						"Tasks": [
+							{
+								"Resources": {
+									"CPU": 400,
+									"MemoryMB": 256,
+									"IOPS": 40
+								}
+							}
+						],
+						"EphemeralDisk": {
+							"SizeMB": 500
+						}
+					}
+				]
+			}`,
+		),
+	)
+	expectedCPU = 1400.0
+	expectedMemory = 2048.0
+	expectedDisk = 4000.0
+	expectedIOPS = 140.0
+	actualCPU, actualMemory, actualDisk, actualIOPS = aggRequested("clusterAddress", "jobID2", "service")
+	assert.NotNil(t, actualCPU)
+	assert.NotNil(t, actualMemory)
+	assert.NotNil(t, actualDisk)
+	assert.NotNil(t, actualIOPS)
+	assert.Equal(t, expectedCPU, actualCPU)
+	assert.Equal(t, expectedMemory, actualMemory)
+	assert.Equal(t, expectedDisk, actualDisk)
+	assert.Equal(t, expectedIOPS, actualIOPS)
+
+	expectedCPU = 0.0
+	expectedMemory = 0.0
+	expectedDisk = 0.0
+	expectedIOPS = 0.0
+	actualCPU, actualMemory, actualDisk, actualIOPS = aggRequested("clusterAddress", "jobID", "none")
+	assert.NotNil(t, actualCPU)
+	assert.NotNil(t, actualMemory)
+	assert.NotNil(t, actualDisk)
+	assert.NotNil(t, actualIOPS)
+	assert.Equal(t, expectedCPU, actualCPU)
+	assert.Equal(t, expectedMemory, actualMemory)
+	assert.Equal(t, expectedDisk, actualDisk)
+	assert.Equal(t, expectedIOPS, actualIOPS)
+
+	expectedCPU = 0.0
+	expectedMemory = 0.0
+	expectedDisk = 0.0
+	expectedIOPS = 0.0
+	actualCPU, actualMemory, actualDisk, actualIOPS = aggRequested("badAddress", "jobID", "system")
+	assert.NotNil(t, actualCPU)
+	assert.NotNil(t, actualMemory)
+	assert.NotNil(t, actualDisk)
+	assert.NotNil(t, actualIOPS)
+	assert.Equal(t, expectedCPU, actualCPU)
+	assert.Equal(t, expectedMemory, actualMemory)
+	assert.Equal(t, expectedDisk, actualDisk)
+	assert.Equal(t, expectedIOPS, actualIOPS)
+}
