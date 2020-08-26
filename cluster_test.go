@@ -1170,3 +1170,448 @@ func TestAggRequested(t *testing.T) {
 	assert.Equal(t, expectedDisk, actualDisk)
 	assert.Equal(t, expectedIOPS, actualIOPS)
 }
+
+func TestReachCluster(t *testing.T) {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	// Job List
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/jobs",
+		httpmock.NewStringResponder(200, `
+			[
+				{
+					"ID": "jobID1",
+					"Name": "jobName1",
+					"Datacenters": [
+						"DC1"
+					],
+					"Type": "service",
+					"JobSummary": {
+						"Namespace": "default"
+					}
+				},
+				{
+					"ID": "jobID2",
+					"Name": "jobName2",
+					"Datacenters": [
+						"DC2"
+					],
+					"Type": "system",
+					"JobSummary": {
+						"Namespace": "default"
+					}
+				},
+				{
+					"ID": "jobID3",
+					"Name": "jobName3",
+					"Datacenters": [
+						"DC3"
+					],
+					"Type": "other",
+					"JobSummary": {
+						"Namespace": "default"
+					}
+				}
+			]`,
+		),
+	)
+
+	// VictoriaMetrics
+	// jobName1
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22jobName1%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"13459456"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22jobName1%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"33459456"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22jobName1%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"23459456.0"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+	// jobName2
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22jobName2%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"23459456"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22jobName2%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"54459456"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22jobName2%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"63459456.0"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+	// jobName3
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_memory_rss_value%7Bjob%3D%22jobName3%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"12459456"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_memory_cache_value%7Bjob%3D%22jobName3%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"56459456"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://metricsAddress/api/v1/query?query=sum(nomad_client_allocs_cpu_total_ticks_value%7Bjob%3D%22jobName3%22%7D)%20by%20(job)",
+		httpmock.NewStringResponder(200, `
+			{
+				"status": "success",
+				"data": {
+					"resultType": "vector",
+					"result": [
+						{
+							"metric": {
+								"job": "jobName"
+							},
+							"value": [
+								1597365496,
+								"15459456.0"
+							]
+						}
+					]
+				}
+			}`,
+		),
+	)
+
+	// Requested Resources
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/job/jobID1",
+		httpmock.NewStringResponder(200, `
+			{
+				"ID": "jobID1",
+				"TaskGroups": [
+					{
+						"Name": "TaskGroup1",
+						"Count": 3,
+						"Tasks": [
+							{
+								"Resources": {
+									"CPU": 200,
+									"MemoryMB": 512,
+									"IOPS": 20
+								}
+							}
+						],
+						"EphemeralDisk": {
+							"SizeMB": 1000
+						}
+					},
+					{
+						"Name": "TaskGroup2",
+						"Count": 2,
+						"Tasks": [
+							{
+								"Resources": {
+									"CPU": 400,
+									"MemoryMB": 256,
+									"IOPS": 40
+								}
+							}
+						],
+						"EphemeralDisk": {
+							"SizeMB": 500
+						}
+					}
+				]
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/job/jobID2",
+		httpmock.NewStringResponder(200, `
+			{
+				"ID": "jobID2",
+				"TaskGroups": [
+					{
+						"Name": "TaskGroup1",
+						"Count": 1,
+						"Tasks": [
+							{
+								"Resources": {
+									"CPU": 200,
+									"MemoryMB": 512,
+									"IOPS": 20
+								}
+							}
+						],
+						"EphemeralDisk": {
+							"SizeMB": 1000
+						}
+					},
+					{
+						"Name": "TaskGroup2",
+						"Count": 1,
+						"Tasks": [
+							{
+								"Resources": {
+									"CPU": 400,
+									"MemoryMB": 256,
+									"IOPS": 40
+								}
+							}
+						],
+						"EphemeralDisk": {
+							"SizeMB": 500
+						}
+					}
+				]
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/job/jobID3",
+		httpmock.NewStringResponder(200, `
+			{
+				"ID": "jobID2",
+				"TaskGroups": [
+					{
+						"Name": "TaskGroup1",
+						"Count": 1,
+						"Tasks": [
+							{
+								"Resources": {
+									"CPU": 200,
+									"MemoryMB": 512,
+									"IOPS": 20
+								}
+							}
+						],
+						"EphemeralDisk": {
+							"SizeMB": 1000
+						}
+					},
+					{
+						"Name": "TaskGroup2",
+						"Count": 1,
+						"Tasks": [
+							{
+								"Resources": {
+									"CPU": 400,
+									"MemoryMB": 256,
+									"IOPS": 40
+								}
+							}
+						],
+						"EphemeralDisk": {
+							"SizeMB": 500
+						}
+					}
+				]
+			}`,
+		),
+	)
+	httpmock.RegisterResponder("GET", "http://clusterAddress/v1/job/jobID2/allocations",
+		httpmock.NewStringResponder(200, `
+			[
+				{
+					"TaskGroup": "TaskGroup1"
+				},
+				{
+					"TaskGroup": "TaskGroup1"
+				},
+				{
+					"TaskGroup": "TaskGroup2"
+				},
+				{
+					"TaskGroup": "TaskGroup2"
+				},
+				{
+					"TaskGroup": "TaskGroup2"
+				}
+			]`,
+		),
+	)
+	
+	wg.Add(1)
+	c := make(chan []JobData, 1)
+	reachCluster("clusterAddress", "metricsAddress", c)
+	wg.Wait()
+	close(c)
+
+	expectedJob1 := JobData{
+		"jobID1",
+		"jobName1",
+		23459456.0,
+		1400.0,
+		13459456 / 1.049e6,
+		33459456 / 1.049e6,
+		2048.0,
+		4000.0,
+		140.0,
+		"default",
+		"DC1",
+		"",
+	}
+	expectedJob2 := JobData{
+		"jobID2",
+		"jobName2",
+		63459456.0,
+		1600.0,
+		23459456 / 1.049e6,
+		54459456 / 1.049e6,
+		1792.0,
+		3500.0,
+		160.0,
+		"default",
+		"DC2",
+		"",
+	}
+	actualJobs := <-c
+	assert.Equal(t, expectedJob1.JobID, actualJobs[0].JobID)
+	assert.Equal(t, expectedJob1.Name, actualJobs[0].Name)
+	assert.Equal(t, expectedJob1.UTicks, actualJobs[0].UTicks)
+	assert.Equal(t, expectedJob1.RCPU, actualJobs[0].RCPU)
+	assert.Equal(t, expectedJob1.URSS, actualJobs[0].URSS)
+	assert.Equal(t, expectedJob1.UCache, actualJobs[0].UCache)
+	assert.Equal(t, expectedJob1.RMemoryMB, actualJobs[0].RMemoryMB)
+	assert.Equal(t, expectedJob1.RdiskMB, actualJobs[0].RdiskMB)
+	assert.Equal(t, expectedJob1.RIOPS, actualJobs[0].RIOPS)
+	assert.Equal(t, expectedJob1.Namespace, actualJobs[0].Namespace)
+	assert.Equal(t, expectedJob1.DataCenters, actualJobs[0].DataCenters)
+
+	assert.Equal(t, expectedJob2.JobID, actualJobs[1].JobID)
+	assert.Equal(t, expectedJob2.Name, actualJobs[1].Name)
+	assert.Equal(t, expectedJob2.UTicks, actualJobs[1].UTicks)
+	assert.Equal(t, expectedJob2.RCPU, actualJobs[1].RCPU)
+	assert.Equal(t, expectedJob2.URSS, actualJobs[1].URSS)
+	assert.Equal(t, expectedJob2.UCache, actualJobs[1].UCache)
+	assert.Equal(t, expectedJob2.RMemoryMB, actualJobs[1].RMemoryMB)
+	assert.Equal(t, expectedJob2.RdiskMB, actualJobs[1].RdiskMB)
+	assert.Equal(t, expectedJob2.RIOPS, actualJobs[1].RIOPS)
+	assert.Equal(t, expectedJob2.Namespace, actualJobs[1].Namespace)
+	assert.Equal(t, expectedJob2.DataCenters, actualJobs[1].DataCenters)
+}
