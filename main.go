@@ -209,7 +209,6 @@ func reloadConfig(sigs chan os.Signal) {
 			if err := loadConfig("/etc/nurd/config.json"); err != nil {
 				log.Warning(fmt.Sprintf("Error in reloading /etc/nurd/config.json: %v", err))
 			}
-		default:
 		}
 	}
 }
